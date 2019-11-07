@@ -18,4 +18,7 @@ az ml computetarget create mlopscompute -g $rg -w $workspace -n $clusterName -s 
 
 # upload data
 $dataStoreName=$(az ml datastore show-default -w $workspace -g $rg --query name -o tsv)
-az ml datastore upload -w $workspace -g $rg -n $dataStoreName -p data -u diabetes --overwrite true
+az ml datastore upload -w $workspace -g $rg -n $dataStoreName -p ../data -u diabetesdata --overwrite true
+
+# create folders for artifacts
+mkdir models && mkdir metadata
