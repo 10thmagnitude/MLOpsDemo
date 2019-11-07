@@ -4,6 +4,7 @@ $experimentName="diabetes"
 $clusterName="cdmlops"
 $containerName="diabetesdata"
 $fileName="diabetes.csv"
+$modelName="basicmodel"
 $vmSize="Standard_DS2_V2"
 $minNodes=0
 $maxNodes=2
@@ -32,12 +33,14 @@ az ml run submit-script -g $rg -w $workspace -e $experimentName --ct $clusterNam
     -d ../training/conda_dependencies.yml --path ../training -c train_basic \
     -t ../metadata/run.json train_model_basic.py $dataStoreName $containerName $fileName
 
+# TODO: invoke python to compare model metrics
+
 # register model
-az ml register -g $rg -w $workspace -n $modelName -f metadata/run.json \
+az ml model register -g $rg -w $workspace -n $modelName -f metadata/run.json \
     --asset-path outputs/models/sklearn_diabetes_model.pkl \
-    -d "Basic Linear model using diabetes dataset"
-    --tag "data"="diabetes" \
-    --tag "model"="regression" \
-    --tag "type"="basic" \
-    --model-framework ScikitLearn \
-    -t metadata/model.json
+    -d "Basic Linear model using diabetes dataset" \
+    --model-framework ScikitLearn -t metadata/model.json \
+    --tag data=diabetes \
+    --tag model=regression \
+    --tag type=basic
+    
