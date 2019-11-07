@@ -5,6 +5,7 @@ $clusterName="cdmlops"
 $containerName="diabetesdata"
 $fileName="diabetes.csv"
 $modelName="basicmodel"
+$serviceName="diabetes-aci"
 $vmSize="Standard_DS2_V2"
 $minNodes=0
 $maxNodes=2
@@ -43,4 +44,14 @@ az ml model register -g $rg -w $workspace -n $modelName -f metadata/run.json \
     --tag data=diabetes \
     --tag model=regression \
     --tag type=basic
-    
+
+# download model
+$modelId=$(jq -r .modelId metadata/model.json)
+az ml model download -g $rg -w $workspace -i $modelId -t ./models --overwrite
+
+# deploy model
+# note: deploy command must be in path to config files etc.
+cd ../deployment
+az ml model deploy -g $rg -w $workspace -n $serviceName -f ../scripts/metadata/model.json \
+    --dc aciDeploymentConfig.yml --ic inferenceConfig.yml --overwrite
+cd ../scripts
