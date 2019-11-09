@@ -1,5 +1,7 @@
 import pandas as pd
 import matplotlib.pyplot as plt
+import seaborn as sn
+
 from joblib import dump
 
 from sklearn.model_selection import train_test_split
@@ -75,8 +77,12 @@ cm_data = {
     }
 }
 print(cm_data)
-run.log_confusion_matrix("ConfusionMatrixJSON", cm_data)
-run.log_list("ConfusionMatrix", confusion_matrix.tolist())
+run.log_confusion_matrix("Confusion Matrix JSON", cm_data)
+run.log_list("ConfusionMatrix", confusion_matrix.ravel().tolist())
+
+plt.figure(figsize = (10,7))
+heatmap = sn.heatmap(confusion_matrix, annot=True, fmt="d")
+run.log_image("Confusion Matrix Heat Map", plot=plt)
 
 print("Classification Report:")
 print(metrics.classification_report(y_test, lr_predict_test))
