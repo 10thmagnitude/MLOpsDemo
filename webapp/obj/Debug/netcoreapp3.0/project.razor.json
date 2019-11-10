@@ -14364,6 +14364,11 @@
       "FileKind": "mvc"
     },
     {
+      "FilePath": "Views/Shared/_StatusMessages.cshtml",
+      "TargetPath": "Views/Shared/_StatusMessages.cshtml",
+      "FileKind": "mvc"
+    },
+    {
       "FilePath": "Views/_ViewImports.cshtml",
       "TargetPath": "Views/_ViewImports.cshtml",
       "FileKind": "mvc"

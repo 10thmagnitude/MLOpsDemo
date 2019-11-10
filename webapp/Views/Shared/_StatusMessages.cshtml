@@ -1,0 +1,11 @@
+@{
+    var msg = TempData["_statusMessage"] as StatusMessageViewModel;
+}
+@if (msg != null)
+{
+    var type = msg.Type.ToString();
+    <div class="alert alert-@type alert-dismissible" role="alert">
+        <button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+        <strong>@msg.Title</strong> @msg.Message
+    </div>    
+}
