@@ -5,6 +5,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
+using System.Net.Http;
 using webapp.Models;
 
 namespace webapp.Controllers
@@ -12,10 +13,12 @@ namespace webapp.Controllers
     public class DiabetesController : Controller
     {
         private readonly ILogger<DiabetesController> _logger;
+        private readonly IPredictionAPIClient _predictionAPI;
 
-        public DiabetesController(ILogger<DiabetesController> logger)
+        public DiabetesController(ILogger<DiabetesController> logger, IPredictionAPIClient predictionAPI)
         {
             _logger = logger;
+            _predictionAPI = predictionAPI;
         }
 
         public IActionResult Index()
@@ -38,10 +41,10 @@ namespace webapp.Controllers
         }
 
         [HttpPost]
-        public IActionResult Predict(DiabetesViewModel model)
+        public async Task<IActionResult> Predict(DiabetesViewModel model)
         {
             // TODO: call API
-            var result = false;
+            var result = await _predictionAPI.GetPrediction(model);
             TempData["_statusMessage"] = new StatusMessageViewModel() 
             { 
                 Message = $"This patient has a {(result ? "high" : "low")} chance of developing diabetes.",

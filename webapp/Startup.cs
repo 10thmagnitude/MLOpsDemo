@@ -24,6 +24,17 @@ namespace webapp
         public void ConfigureServices(IServiceCollection services)
         {
             services.AddControllersWithViews();
+
+            services.AddHttpClient<IPredictionAPIClient, PredictionAPIClient>(c =>
+            {
+                c.BaseAddress = new Uri(Configuration["PredictionAPI:BaseURI"]);
+                // Add auth if it is present
+                var scoreKey = Configuration["PredictionAPI:ScoreKey"];
+                if (!string.IsNullOrEmpty(scoreKey))
+                {
+                    c.DefaultRequestHeaders.Add("Authorization", $"Bearer {scoreKey}");
+                }
+            });
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
