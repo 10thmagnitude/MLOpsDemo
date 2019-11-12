@@ -46,7 +46,7 @@ stages:
         displayName: Publish Artifact
         inputs:
           targetPath: $(Pipeline.Workspace)/site
-          ArtifactName: drop
+          ArtifactName: site
 
 - stage: provisionInfra
   displayName: Provision Infrastructure
