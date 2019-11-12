@@ -86,8 +86,8 @@ stages:
               RG: $(RGName)
               LOCATION: $(Location)
               CREATEDBY: $(CreatedBy)
-              SKU: $(Sku)
-              APPNAME: $(cd-diabetes)
+              SKU: $(SKU)
+              APPNAME: $(WebAppName)
               ENVNAME: $(EnvironmentName)
           
           - task: AzureCLI@2
