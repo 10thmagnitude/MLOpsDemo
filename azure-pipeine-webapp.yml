@@ -1,1 +1,78 @@
-# TODO: deploy webapp
+name: 1.0.0$(Rev:.r)
+
+trigger:
+  paths:
+    include:
+    - webapp
+
+variables:
+  AzureSubscription: 10M Client Demo
+  RGName: cd-mlops
+  Location: westus2
+  WebAppName: cd-diabetes
+  CreatedBy: colin
+
+stages:
+- stage: build
+  displayName: Build website
+  jobs:
+    job: build
+    displayName: Compile and Package
+    pool:
+      vmImage: ubuntu-latest
+    steps:
+      - checkout: self
+
+      - task: colinsalmcorner.colinsalmcorner-buildtasks.version-assemblies-task.VersionAssemblies@2
+        displayName: Version Assemblies using **\AssemblyInfo.*
+        inputs:
+          sourcePath: PartsUnlimited-aspnet45/src/PartsUnlimitedWebsite
+      
+      - task: DotNetCoreCLI@2
+        displayName: dotnet build
+        inputs:
+          command: build
+          projects: '**/*.csproj'
+          arguments: '--configuration Release'
+      
+      - task: DotNetCoreCLI@2
+        displayName: dotnet publish
+        inputs:
+          command: publish
+          publishWebProjects: True
+          arguments: '--configuration Release --output $(Pipeline.Workspace)/site'
+          zipAfterPublish: True
+      
+      - task: PublishPipelineArtifact@1
+        displayName: Publish Artifact
+        inputs:
+          targetPath: $(Pipeline.Workspace)/site
+          ArtifactName: drop
+
+- stage: provisionInfra
+  displayName: Provision Infrastructure
+  dependsOn: build
+  jobs:
+  - deployment: provisionInfra
+    displayName: Provision Azure PaaS Infra
+    pool:
+      vmImage: ubuntu-latest
+    environment:
+      MLOps-Dev
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - task: AzureCLI@2
+            displayName: Create Azure Web App
+            inputs:
+              azureSubscription: $(AzureSubscription)
+              scriptType: bash
+              scriptLocation: inlineScript
+              inlineScript: |
+                # create resource group
+                echo "Creating resource group $RG in $LOCATION"
+                az group create --name $RG -l $LOCATION --tags createdBy=$CREATEDBY purpose=demo
+
+                # create azure web app
+                # TODO
