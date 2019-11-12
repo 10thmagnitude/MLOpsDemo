@@ -181,18 +181,6 @@ stages:
               BUILDNUMBER: $(Build.BuildNumber)
               ROOTFOLDER: $(Pipeline.Workspace)/training
           
-          # - task: CopyFiles@2
-          #   displayName: Copy metdata to artifact staging directory
-          #   inputs:
-          #     SourceFolder: ./metadata
-          #     TargetFolder: $(Pipeline.Workspace)/training/metadata
-
-          # - task: CopyFiles@2
-          #   displayName: Copy model to artifact staging directory
-          #   inputs:
-          #     SourceFolder: ./model
-          #     TargetFolder: $(Pipeline.Workspace)/training/model
-
           - task: PublishPipelineArtifact@1
             displayName: Publish Artifact
             inputs:
@@ -243,7 +231,7 @@ stages:
               ARTIFACTFOLDER: $(Pipeline.Workspace)/model
               RG: $(RGName)
               LOCATION: $(Location)
-              WORKSPACE: $(Workspace)
+              WORKSPACE: $(WorkspaceName)
               SERVICENAME: $(ServiceName)
           
           #- task: # TODO: pytest to test API is running
