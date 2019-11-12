@@ -176,7 +176,7 @@ stages:
                 az ml model download -g $RG -w $WORKSPACE -i $modelId -t $ROOTFOLDER/models --overwrite
             env:
               RG: $(RGName)
-              WORKSPACE: $(Workspace)
+              WORKSPACE: $(WorkspaceName)
               MODELNAME: $(ModelName)
               BUILDNUMBER: $(Build.BuildNumber)
               ROOTFOLDER: $(Pipeline.Workspace)/training
