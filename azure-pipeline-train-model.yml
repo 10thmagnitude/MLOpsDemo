@@ -1,8 +1,9 @@
 name: 1.0.0$(Rev:.r)
 
 trigger:
-  path:
-    # TODO: exclude webapp folder
+  paths:
+    exclude:
+    - webapp
 
 variables:
   AzureSubscription: 10M Client Demo
@@ -14,7 +15,6 @@ variables:
   ContainerName: diabetesdata
   DataFileName: diabetes_pima.csv
   TrainingScript: train_pima_model.py
-  DataFileName: diabetes_data.csv
   ModelName: basicmodel
   ServiceName: diabetes-aci
   VMSize: Standard_DS2_V2
@@ -41,8 +41,9 @@ stages:
             displayName: Provision RG and ML Workspace
             inputs:
               azureSubscription: $(AzureSubscription)
-              type: inline
-              script: |
+              scriptType: Shell
+              scriptLocation: inlineScript
+              inlineScript: |
                 # create resource group
                 echo "Creating resource group $RG in $LOCATION"
                 az group create --name $RG -l $LOCATION --tags createdBy=$CREATEDBY purpose=demo
@@ -56,15 +57,15 @@ stages:
                 az ml computetarget create amlcompute -g $rg -w $WORKSPACE -n $CLUSTERNAME -s $VMSIZE \
                     --min-nodes $MINNODES --max-nodes $MAXNODES \
                     --idle-seconds-before-scaledown $IDLESECONDSBEFORESLACEDOWN --remote-login-port-public-access Disabled
-              env:
-                RG: $(RGName)
-                LOCATION: $(Location)
-                CREATEDBY: $(CreatedBy)
-                WORKSPACE: $(WorkspaceName)
-                CLUSTERNAME: $(ClusterName)
-                MINNODES: $(MinNodes)
-                MAXNODES: $(MaxNodes)
-                IDLESECONDSBEFORESCALEDOWN: $(IdleSecondsBeforeScaleDown)
+            env:
+              RG: $(RGName)
+              LOCATION: $(Location)
+              CREATEDBY: $(CreatedBy)
+              WORKSPACE: $(WorkspaceName)
+              CLUSTERNAME: $(ClusterName)
+              MINNODES: $(MinNodes)
+              MAXNODES: $(MaxNodes)
+              IDLESECONDSBEFORESCALEDOWN: $(IdleSecondsBeforeScaleDown)
 
 - stage: trainModel
   dependsOn: provisionWorkspace
@@ -84,40 +85,42 @@ stages:
             displayName: Upload training data
             inputs:
               azureSubscription: $(AzureSubscription)
-              type: inline
-              script: |
+              scriptType: Shell
+              scriptLocation: inlineScript
+              inlineScript: |
                 echo "Uploading training data"
                 dataStoreName=$(az ml datastore show-default -w $WORKSPACE -g $RG --query name -o tsv)
                 az ml datastore upload -w $WORKSPACE -g $RG -n $dataStoreName -p ../data -u $CONTAINERNAME --overwrite true
-
-              env:
-                RG: $(RGName)
-                LOCATION: $(Location)
-                CONTAINERNAME: $(ContainerName)
+            env:
+              RG: $(RGName)
+              LOCATION: $(Location)
+              CONTAINERNAME: $(ContainerName)
           
           - task: azureCLI   # TODO
             displayName: Upload training data
             inputs:
               azureSubscription: $(AzureSubscription)
-              type: inline
-              script: |
+              scriptType: Shell
+              scriptLocation: inlineScript
+              inlineScript: |
                 echo "Uploading training data"
                 dataStoreName=$(az ml datastore show-default -w $WORKSPACE -g $RG --query name -o tsv)
                 az ml datastore upload -w $WORKSPACE -g $RG -n $dataStoreName -p ../data -u $CONTAINERNAME --overwrite true
                 
                 # create a variable with the datastoreName for subsequent tasks
                 echo "#vso [task.setvariable;name=DataStoreName;]$dataStoreName"
-              env:
-                RG: $(RGName)
-                LOCATION: $(Location)
-                CONTAINERNAME: $(ContainerName)
+            env:
+              RG: $(RGName)
+              LOCATION: $(Location)
+              CONTAINERNAME: $(ContainerName)
           
           - task: azureCLI   # TODO
             displayName: Train model
             inputs:
               azureSubscription: $(AzureSubscription)
-              type: inline
-              script: |
+              scriptType: Shell
+              scriptLocation: inlineScript
+              inlineScript: |
                 # create folders for artifacts
                 mkdir models -p && mkdir metadata -p
 
@@ -127,21 +130,22 @@ stages:
                 az ml run submit-script -g $RG -w $WORKSPACE -e $EXPERIMENTNAME --ct $CLUSTERNAME \
                     -d ../training/conda_dependencies.yml --path ../training -c train_basic \
                     -t metadata/run.json $TRAININGSCRIPT $DATASTORENAME $CONTAINERNAME $DATAFILENAME
-              env:
-                RG: $(RGName)
-                CLUSTERNAME: $(ClusterName)
-                CONTAINERNAME: $(ContainerName)
-                DATASTORENAME: $(DataStoreName)
-                EXPERIMENTNAME: $(ExperimentName)
-                TRAININGSCRIPT: $(TrainingScript)
-                DATAFILENAME: $(DataFileName)
+            env:
+              RG: $(RGName)
+              CLUSTERNAME: $(ClusterName)
+              CONTAINERNAME: $(ContainerName)
+              DATASTORENAME: $(DataStoreName)
+              EXPERIMENTNAME: $(ExperimentName)
+              TRAININGSCRIPT: $(TrainingScript)
+              DATAFILENAME: $(DataFileName)
 
           - task: azureCLI   # TODO
             displayName: Register and download model
             inputs:
               azureSubscription: $(AzureSubscription)
-              type: inline
-              script: |
+              scriptType: Shell
+              scriptLocation: inlineScript
+              inlineScript: |
                 # register model
                 echo "Registering model $MODELNAME"
                 az ml model register -g $RG -w $WORKSPACE -n $MODELNAME -f metadata/run.json \
@@ -156,11 +160,11 @@ stages:
                 # download model
                 modelId=$(jq -r .modelId metadata/model.json)
                 az ml model download -g $RG -w $WORKSPACE -i $modelId -t ./models --overwrite
-              env:
-                RG: $(RGName)
-                WORKSPACE: $(Workspace)
-                MODELNAME: $(ModelName)
-                BUILDNUMBER: $(Build.BuildNumber)
+            env:
+              RG: $(RGName)
+              WORKSPACE: $(Workspace)
+              MODELNAME: $(ModelName)
+              BUILDNUMBER: $(Build.BuildNumber)
           
           - task: CopyFiles@2
             displayName: Copy metdata to artifact staging directory
@@ -201,19 +205,21 @@ stages:
             displayName: Deploy Model to ACI
             inputs:
               azureSubscription: $(AzureSubscription)
-              type: inline
-              script: |
+              scriptType: Shell
+              scriptLocation: inlineScript
+              inlineScript: |
                 echo "Deploying model to service $SERVICENAME"
                 az ml model deploy -g $RG -w $WORKSPACE -n $SERVICENAME -f $ATRIFACTFOLDER/metadata/model.json \
                   --dc aciDeploymentConfig.yml --ic inferenceConfig.yml --overwrite
-              env:
-                ARTIFACTFOLDER: $(Pipeline.Workspace)/model
-                RG: $(RGName)
-                LOCATION: $(Location)
-                WORKSPACE: $(Workspace)
-                SERVICENAME: $(ServiceName)
               workingDirectory: deployment
-          - task: # TODO: pytest to test API is running
+            env:
+              ARTIFACTFOLDER: $(Pipeline.Workspace)/model
+              RG: $(RGName)
+              LOCATION: $(Location)
+              WORKSPACE: $(Workspace)
+              SERVICENAME: $(ServiceName)
+          
+          #- task: # TODO: pytest to test API is running
       
 
   
