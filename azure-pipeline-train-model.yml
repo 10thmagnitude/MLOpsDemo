@@ -38,7 +38,7 @@ stages:
         deploy:
           steps:
           - task: AzureCLI@2
-            displayName: Provision RG and ML Workspace
+            displayName: Install az ml extension
             inputs:
               azureSubscription: $(AzureSubscription)
               scriptType: bash
@@ -60,11 +60,11 @@ stages:
 
                 # create an ML Workspace
                 echo "Creating ML workspace $WORKSPACE"
-                az ml workspace create -g $rg -w $WORKSPACE -l $LOCATION --exist-ok --yes
+                az ml workspace create -g $RG -w $WORKSPACE -l $LOCATION --exist-ok --yes
 
                 # create a compute target
                 echo "Creating compute target $CLUSTERNAME"
-                az ml computetarget create amlcompute -g $rg -w $WORKSPACE -n $CLUSTERNAME -s $VMSIZE \
+                az ml computetarget create amlcompute -g $RG -w $WORKSPACE -n $CLUSTERNAME -s $VMSIZE \
                     --min-nodes $MINNODES --max-nodes $MAXNODES \
                     --idle-seconds-before-scaledown $IDLESECONDSBEFORESLACEDOWN --remote-login-port-public-access Disabled
             env:
