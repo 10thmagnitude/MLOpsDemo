@@ -1,0 +1,219 @@
+name: 1.0.0$(Rev:.r)
+
+trigger:
+  path:
+    # TODO: exclude webapp folder
+
+variables:
+  AzureSubscription: 10M Client Demo
+  RGName: cd-mlops
+  Location: westus2
+  WorkspaceName: cdmlops
+  ExperimentName: diabetes
+  ClusterName: cdmlops
+  ContainerName: diabetesdata
+  DataFileName: diabetes_pima.csv
+  TrainingScript: train_pima_model.py
+  DataFileName: diabetes_data.csv
+  ModelName: basicmodel
+  ServiceName: diabetes-aci
+  VMSize: Standard_DS2_V2
+  MinNodes: 0
+  MaxNodes: 2
+  IdleSecondsBeforeScaleDown: 300
+  CreatedBy: colin
+
+stages:
+- stage: provisionWorkspace
+  displayName: Provision Workspace
+  jobs:
+  - deployment: provisionWorkspace
+    displayName: Provision ML Workspace
+    pool:
+      vmImage: ubuntu-latest
+    environment:
+      Workspace
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - task: azureCLI   # TODO
+            displayName: Provision RG and ML Workspace
+            inputs:
+              azureSubscription: $(AzureSubscription)
+              type: inline
+              script: |
+                # create resource group
+                echo "Creating resource group $RG in $LOCATION"
+                az group create --name $RG -l $LOCATION --tags createdBy=$CREATEDBY purpose=demo
+
+                # create an ML Workspace
+                echo "Creating ML workspace $WORKSPACE"
+                az ml workspace create -g $rg -w $WORKSPACE -l $LOCATION --exist-ok --yes
+
+                # create a compute target
+                echo "Creating compute target $CLUSTERNAME"
+                az ml computetarget create amlcompute -g $rg -w $WORKSPACE -n $CLUSTERNAME -s $VMSIZE \
+                    --min-nodes $MINNODES --max-nodes $MAXNODES \
+                    --idle-seconds-before-scaledown $IDLESECONDSBEFORESLACEDOWN --remote-login-port-public-access Disabled
+              env:
+                RG: $(RGName)
+                LOCATION: $(Location)
+                CREATEDBY: $(CreatedBy)
+                WORKSPACE: $(WorkspaceName)
+                CLUSTERNAME: $(ClusterName)
+                MINNODES: $(MinNodes)
+                MAXNODES: $(MaxNodes)
+                IDLESECONDSBEFORESCALEDOWN: $(IdleSecondsBeforeScaleDown)
+
+- stage: trainModel
+  dependsOn: provisionWorkspace
+  displayName: Train Model
+  jobs:
+  - deployment: trainModel
+    displayName: Train Model
+    pool:
+      vmImage: ubuntu-latest
+    environment:
+      Workspace
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - task: azureCLI   # TODO
+            displayName: Upload training data
+            inputs:
+              azureSubscription: $(AzureSubscription)
+              type: inline
+              script: |
+                echo "Uploading training data"
+                dataStoreName=$(az ml datastore show-default -w $WORKSPACE -g $RG --query name -o tsv)
+                az ml datastore upload -w $WORKSPACE -g $RG -n $dataStoreName -p ../data -u $CONTAINERNAME --overwrite true
+
+              env:
+                RG: $(RGName)
+                LOCATION: $(Location)
+                CONTAINERNAME: $(ContainerName)
+          
+          - task: azureCLI   # TODO
+            displayName: Upload training data
+            inputs:
+              azureSubscription: $(AzureSubscription)
+              type: inline
+              script: |
+                echo "Uploading training data"
+                dataStoreName=$(az ml datastore show-default -w $WORKSPACE -g $RG --query name -o tsv)
+                az ml datastore upload -w $WORKSPACE -g $RG -n $dataStoreName -p ../data -u $CONTAINERNAME --overwrite true
+                
+                # create a variable with the datastoreName for subsequent tasks
+                echo "#vso [task.setvariable;name=DataStoreName;]$dataStoreName"
+              env:
+                RG: $(RGName)
+                LOCATION: $(Location)
+                CONTAINERNAME: $(ContainerName)
+          
+          - task: azureCLI   # TODO
+            displayName: Train model
+            inputs:
+              azureSubscription: $(AzureSubscription)
+              type: inline
+              script: |
+                # create folders for artifacts
+                mkdir models -p && mkdir metadata -p
+
+                # train model (basic)
+                rm -f metadata/run.json
+                echo "Training model using experiment $EXPERIMENTNAME and script $TRAININGSCRIPT"
+                az ml run submit-script -g $RG -w $WORKSPACE -e $EXPERIMENTNAME --ct $CLUSTERNAME \
+                    -d ../training/conda_dependencies.yml --path ../training -c train_basic \
+                    -t metadata/run.json $TRAININGSCRIPT $DATASTORENAME $CONTAINERNAME $DATAFILENAME
+              env:
+                RG: $(RGName)
+                CLUSTERNAME: $(ClusterName)
+                CONTAINERNAME: $(ContainerName)
+                DATASTORENAME: $(DataStoreName)
+                EXPERIMENTNAME: $(ExperimentName)
+                TRAININGSCRIPT: $(TrainingScript)
+                DATAFILENAME: $(DataFileName)
+
+          - task: azureCLI   # TODO
+            displayName: Register and download model
+            inputs:
+              azureSubscription: $(AzureSubscription)
+              type: inline
+              script: |
+                # register model
+                echo "Registering model $MODELNAME"
+                az ml model register -g $RG -w $WORKSPACE -n $MODELNAME -f metadata/run.json \
+                    --asset-path outputs/models/sklearn_diabetes_model.pkl \
+                    -d "Basic Linear model using diabetes dataset" \
+                    --model-framework ScikitLearn -t metadata/model.json \
+                    --tag data=diabetes \
+                    --tag model=regression \
+                    --tag type=basic \
+                    --tag build=$BUILDNUMBER
+
+                # download model
+                modelId=$(jq -r .modelId metadata/model.json)
+                az ml model download -g $RG -w $WORKSPACE -i $modelId -t ./models --overwrite
+              env:
+                RG: $(RGName)
+                WORKSPACE: $(Workspace)
+                MODELNAME: $(ModelName)
+                BUILDNUMBER: $(Build.BuildNumber)
+          
+          - task: CopyFiles@2
+            displayName: Copy metdata to artifact staging directory
+            inputs:
+              SourceFolder: ./metadata
+              TargetFolder: $(build.artifactstagingdirectory)/metadata
+
+          - task: CopyFiles@2
+            displayName: Copy model to artifact staging directory
+            inputs:
+              SourceFolder: ./model
+              TargetFolder: $(build.artifactstagingdirectory)/model
+
+          - task: PublishPipelineArtifact@1
+            displayName: Publish Artifact
+            inputs:
+              targetPath: $(build.artifactstagingdirectory)
+              ArtifactName: model
+
+- stage: devDeployModel
+  dependsOn: trainModel
+  displayName: Deploy Model to DEV
+  jobs:
+  - deployment: deployModel
+    displayName: Deploy Model
+    pool:
+      vmImage: ubuntu-latest
+    environment:
+      Workspace
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - download: current
+            artifact: model  # get model
+          - checkout: self   # get config files in repo
+          - task: azureCLI   # TODO
+            displayName: Deploy Model to ACI
+            inputs:
+              azureSubscription: $(AzureSubscription)
+              type: inline
+              script: |
+                echo "Deploying model to service $SERVICENAME"
+                az ml model deploy -g $RG -w $WORKSPACE -n $SERVICENAME -f $ATRIFACTFOLDER/metadata/model.json \
+                  --dc aciDeploymentConfig.yml --ic inferenceConfig.yml --overwrite
+              env:
+                ARTIFACTFOLDER: $(Pipeline.Workspace)/model
+                RG: $(RGName)
+                LOCATION: $(Location)
+                WORKSPACE: $(Workspace)
+                SERVICENAME: $(ServiceName)
+              workingDirectory: deployment
+          - task: # TODO: pytest to test API is running
+      
+
+  
