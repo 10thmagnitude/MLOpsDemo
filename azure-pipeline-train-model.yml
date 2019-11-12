@@ -131,14 +131,14 @@ stages:
               scriptLocation: inlineScript
               inlineScript: |
                 # create folders for artifacts
-                mkdir models -p && mkdir metadata -p
+                mkdir $ROOTFOLDER/models -p && mkdir $ROOTFOLDER/metadata -p
 
                 # train model (basic)
                 rm -f metadata/run.json
                 echo "Training model using experiment $EXPERIMENT and script $TRAININGSCRIPT"
                 az ml run submit-script -g $RG -w $WORKSPACE -e $EXPERIMENT --ct $CLUSTER \
                     -d training/conda_dependencies.yml --path training -c train_basic \
-                    -t metadata/run.json $TRAININGSCRIPT $DATASTORENAME $CONTAINER $DATAFILENAME
+                    -t $ROOTFOLDER/metadata/run.json $TRAININGSCRIPT $DATASTORENAME $CONTAINER $DATAFILENAME
             env:
               RG: $(RGName)
               CLUSTER: $(ClusterName)
@@ -148,6 +148,7 @@ stages:
               DATASTORENAME: $(DataStoreName)
               TRAININGSCRIPT: $(TrainingScript)
               DATAFILENAME: $(DataFileName)
+              ROOTFOLDER: $(Pipeline.Workspace)/training
 
           - task: AzureCLI@2
             displayName: Register and download model
@@ -158,40 +159,41 @@ stages:
               inlineScript: |
                 # register model
                 echo "Registering model $MODELNAME"
-                az ml model register -g $RG -w $WORKSPACE -n $MODELNAME -f metadata/run.json \
+                az ml model register -g $RG -w $WORKSPACE -n $MODELNAME -f $ROOTFOLDER/metadata/metadata/run.json \
                     --asset-path outputs/models/sklearn_diabetes_model.pkl \
                     -d "Basic Linear model using diabetes dataset" \
-                    --model-framework ScikitLearn -t metadata/model.json \
+                    --model-framework ScikitLearn -t $ROOTFOLDER/metadata/model.json \
                     --tag data=diabetes \
                     --tag model=regression \
                     --tag type=basic \
                     --tag build=$BUILDNUMBER
 
                 # download model
-                modelId=$(jq -r .modelId metadata/model.json)
-                az ml model download -g $RG -w $WORKSPACE -i $modelId -t ./models --overwrite
+                modelId=$(jq -r .modelId $ROOTFOLDER/metadata/model.json)
+                az ml model download -g $RG -w $WORKSPACE -i $modelId -t $ROOTFOLDER/models --overwrite
             env:
               RG: $(RGName)
               WORKSPACE: $(Workspace)
               MODELNAME: $(ModelName)
               BUILDNUMBER: $(Build.BuildNumber)
+              ROOTFOLDER: $(Pipeline.Workspace)/training
           
-          - task: CopyFiles@2
-            displayName: Copy metdata to artifact staging directory
-            inputs:
-              SourceFolder: ./metadata
-              TargetFolder: $(build.artifactstagingdirectory)/metadata
+          # - task: CopyFiles@2
+          #   displayName: Copy metdata to artifact staging directory
+          #   inputs:
+          #     SourceFolder: ./metadata
+          #     TargetFolder: $(Pipeline.Workspace)/training/metadata
 
-          - task: CopyFiles@2
-            displayName: Copy model to artifact staging directory
-            inputs:
-              SourceFolder: ./model
-              TargetFolder: $(build.artifactstagingdirectory)/model
+          # - task: CopyFiles@2
+          #   displayName: Copy model to artifact staging directory
+          #   inputs:
+          #     SourceFolder: ./model
+          #     TargetFolder: $(Pipeline.Workspace)/training/model
 
           - task: PublishPipelineArtifact@1
             displayName: Publish Artifact
             inputs:
-              targetPath: $(build.artifactstagingdirectory)
+              targetPath: $(Pipeline.Workspace)/training
               ArtifactName: model
 
 - stage: devDeployModel
