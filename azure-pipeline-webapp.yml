@@ -53,7 +53,7 @@ stages:
   dependsOn: build
   jobs:
   - deployment: provisionInfra
-    displayName: Provision Azure PaaS Infra
+    displayName: Provision Infra and Deploy App
     pool:
       vmImage: ubuntu-latest
     environment:
