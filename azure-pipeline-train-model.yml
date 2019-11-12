@@ -116,7 +116,7 @@ stages:
                 az ml datastore upload -w $WORKSPACE -g $RG -n $dataStoreName -p data -u $CONTAINER --overwrite true
                 
                 # create a variable with the datastoreName for subsequent tasks
-                echo "#vso[task.setvariable variable=DataStoreName;]$dataStoreName"
+                echo "##vso[task.setvariable variable=DataStoreName;]$dataStoreName"
             env:
               RG: $(RGName)
               LOCATION: $(Location)
