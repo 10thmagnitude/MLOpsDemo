@@ -4,6 +4,7 @@ trigger:
   paths:
     include:
     - webapp
+    - azure-pipeline-webapp.yml
 
 variables:
   AzureSubscription: 10M Client Demo
