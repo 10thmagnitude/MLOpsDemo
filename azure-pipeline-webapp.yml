@@ -27,24 +27,19 @@ stages:
     steps:
       - checkout: self
 
-      - task: colinsalmcorner.colinsalmcorner-buildtasks.version-assemblies-task.VersionAssemblies@2
-        displayName: Version Assemblies using **\AssemblyInfo.*
-        inputs:
-          sourcePath: PartsUnlimited-aspnet45/src/PartsUnlimitedWebsite
-      
       - task: DotNetCoreCLI@2
         displayName: dotnet build
         inputs:
           command: build
           projects: '**/*.csproj'
-          arguments: '--configuration Release'
+          arguments: '--configuration Release /p:Version=$(Build.BuildNumber)'
       
       - task: DotNetCoreCLI@2
         displayName: dotnet publish
         inputs:
           command: publish
           publishWebProjects: True
-          arguments: '--configuration Release --output $(Pipeline.Workspace)/site'
+          arguments: '--configuration Release --output $(Pipeline.Workspace)/site /p:Version=$(Build.BuildNumber)'
           zipAfterPublish: True
       
       - task: PublishPipelineArtifact@1
