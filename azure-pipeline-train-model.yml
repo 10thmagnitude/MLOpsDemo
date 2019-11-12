@@ -92,6 +92,8 @@ stages:
       runOnce:
         deploy:
           steps:
+          - checkout: self   # get config files in repo
+
           - task: AzureCLI@2
             displayName: Install az ml extension
             inputs:
@@ -135,7 +137,7 @@ stages:
                 rm -f metadata/run.json
                 echo "Training model using experiment $EXPERIMENT and script $TRAININGSCRIPT"
                 az ml run submit-script -g $RG -w $WORKSPACE -e $EXPERIMENT --ct $CLUSTER \
-                    -d ../training/conda_dependencies.yml --path ../training -c train_basic \
+                    -d training/conda_dependencies.yml --path training -c train_basic \
                     -t metadata/run.json $TRAININGSCRIPT $DATASTORENAME $CONTAINER $DATAFILENAME
             env:
               RG: $(RGName)
