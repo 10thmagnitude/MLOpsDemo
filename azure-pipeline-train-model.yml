@@ -92,6 +92,16 @@ stages:
         deploy:
           steps:
           - task: AzureCLI@2
+            displayName: Install az ml extension
+            inputs:
+              azureSubscription: $(AzureSubscription)
+              scriptType: bash
+              scriptLocation: inlineScript
+              inlineScript: |
+                echo "Installing ml extension for az"
+                az extension add --name azure-cli-ml
+
+          - task: AzureCLI@2
             displayName: Upload training data
             inputs:
               azureSubscription: $(AzureSubscription)
@@ -210,7 +220,19 @@ stages:
           steps:
           - download: current
             artifact: model  # get model
+            
           - checkout: self   # get config files in repo
+
+          - task: AzureCLI@2
+            displayName: Install az ml extension
+            inputs:
+              azureSubscription: $(AzureSubscription)
+              scriptType: bash
+              scriptLocation: inlineScript
+              inlineScript: |
+                echo "Installing ml extension for az"
+                az extension add --name azure-cli-ml
+
           - task: AzureCLI@2
             displayName: Deploy Model to ACI
             inputs:
