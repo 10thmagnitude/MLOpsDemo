@@ -41,7 +41,7 @@ stages:
             displayName: Provision RG and ML Workspace
             inputs:
               azureSubscription: $(AzureSubscription)
-              scriptType: Shell
+              scriptType: bash
               scriptLocation: inlineScript
               inlineScript: |
                 # create resource group
@@ -85,7 +85,7 @@ stages:
             displayName: Upload training data
             inputs:
               azureSubscription: $(AzureSubscription)
-              scriptType: Shell
+              scriptType: bash
               scriptLocation: inlineScript
               inlineScript: |
                 echo "Uploading training data"
@@ -100,7 +100,7 @@ stages:
             displayName: Upload training data
             inputs:
               azureSubscription: $(AzureSubscription)
-              scriptType: Shell
+              scriptType: bash
               scriptLocation: inlineScript
               inlineScript: |
                 echo "Uploading training data"
@@ -118,7 +118,7 @@ stages:
             displayName: Train model
             inputs:
               azureSubscription: $(AzureSubscription)
-              scriptType: Shell
+              scriptType: bash
               scriptLocation: inlineScript
               inlineScript: |
                 # create folders for artifacts
@@ -143,7 +143,7 @@ stages:
             displayName: Register and download model
             inputs:
               azureSubscription: $(AzureSubscription)
-              scriptType: Shell
+              scriptType: bash
               scriptLocation: inlineScript
               inlineScript: |
                 # register model
@@ -205,7 +205,7 @@ stages:
             displayName: Deploy Model to ACI
             inputs:
               azureSubscription: $(AzureSubscription)
-              scriptType: Shell
+              scriptType: bash
               scriptLocation: inlineScript
               inlineScript: |
                 echo "Deploying model to service $SERVICENAME"
