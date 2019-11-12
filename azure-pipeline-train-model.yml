@@ -44,6 +44,16 @@ stages:
               scriptType: bash
               scriptLocation: inlineScript
               inlineScript: |
+                echo "Installing ml extension for az"
+                az extension add --name azure-cli-ml
+
+          - task: AzureCLI@2
+            displayName: Provision RG and ML Workspace
+            inputs:
+              azureSubscription: $(AzureSubscription)
+              scriptType: bash
+              scriptLocation: inlineScript
+              inlineScript: |
                 # create resource group
                 echo "Creating resource group $RG in $LOCATION"
                 az group create --name $RG -l $LOCATION --tags createdBy=$CREATEDBY purpose=demo
