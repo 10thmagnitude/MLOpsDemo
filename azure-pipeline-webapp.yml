@@ -78,16 +78,16 @@ stages:
                 az group create --name $RG -l $LOCATION --tags createdBy=$CREATEDBY purpose=demo
 
                 echo "Creating app service plan"
-                az appservice plan create -n $APPNAME-$ENVNAME-plan -g $RG -l $LOCATION --sku $SKU
+                az appservice plan create -n $APPNAME-plan -g $RG -l $LOCATION --sku $SKU
 
                 echo "Creating app service"
-                az webapp create -n $APPNAME-$ENVNAME -p $APPNAME-$ENVNAME-plan -g $RG
+                az webapp create -n $APPNAME -p $APPNAME-plan -g $RG
             env:
               RG: $(RGName)
               LOCATION: $(Location)
               CREATEDBY: $(CreatedBy)
               SKU: $(SKU)
-              APPNAME: $(WebAppName)
+              APPNAME: $(WebAppName)-$(EnvironmentName)
               ENVNAME: $(EnvironmentName)
           
           - task: AzureCLI@2
@@ -120,7 +120,7 @@ stages:
               ConnectionType: AzureRM
               azureSubscription: $(AzureSubscription)
               appType: webApp
-              WebAppName: $(WebAppName)
+              WebAppName: $(WebAppName)-$(EnvironmentName)
               packageForLinux: '$(Pipeline.Workspace)/site/*.zip'
               JSONFiles: 'appsettings.json'
           
