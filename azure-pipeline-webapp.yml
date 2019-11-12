@@ -11,6 +11,8 @@ variables:
   Location: westus2
   WebAppName: cd-diabetes
   SKU: B1
+  WorkspaceName: cdmlops
+  ServiceName: diabetes-aci
   CreatedBy: colin
 
 stages:
@@ -60,10 +62,15 @@ stages:
       vmImage: ubuntu-latest
     environment:
       MLOps-Dev
+    variables:
+      EnvironmentName: DEV
     strategy:
       runOnce:
         deploy:
           steps:
+          - download: current
+            artifact: site
+
           - task: AzureCLI@2
             displayName: Create Azure Web App
             inputs:
@@ -75,7 +82,50 @@ stages:
                 az group create --name $RG -l $LOCATION --tags createdBy=$CREATEDBY purpose=demo
 
                 echo "Creating app service plan"
-                az appservice plan create -n $APPNAME-plan -g $RG -l $LOCATION --sku $SKU
+                az appservice plan create -n $APPNAME-$ENVNAME-plan -g $RG -l $LOCATION --sku $SKU
 
                 echo "Creating app service"
-                az webapp create -n $APPNAME -p $APPNAME-plan -g $RG
+                az webapp create -n $APPNAME-$ENVNAME -p $APPNAME-$ENVNAME-plan -g $RG
+            env:
+              RG: $(RGName)
+              LOCATION: $(Location)
+              CREATEDBY: $(CreatedBy)
+              SKU: $(Sku)
+              APPNAME: $(cd-diabetes)
+              ENVNAME: $(EnvironmentName)
+          
+          - task: AzureCLI@2
+            displayName: Install az ml extension
+            inputs:
+              azureSubscription: $(AzureSubscription)
+              scriptType: bash
+              scriptLocation: inlineScript
+              inlineScript: |
+                echo "Installing ml extension for az"
+                az extension add --name azure-cli-ml
+          
+          - task: AzureCLI@2
+            displayName: Get ML service URI
+            inputs:
+              azureSubscription: $(AzureSubscription)
+              scriptType: bash
+              scriptLocation: inlineScript
+              inlineScript: |
+                serviceUri=$(az ml service show -g $RG -w $WORKSPACE  -n $SERVICENAME --query scoringUri -o tsv)
+                echo "##vso[task.setvariable variable=PredictionAPI.BaseURI;]$serviceUri"
+            env:
+              RG: $(RGName)
+              WORKSPACE: $(WorkspaceName)
+              SERVICENAME: $(ServiceName)
+          
+          - task: AzureRmWebAppDeployment@4
+            displayName: Deploy Web App
+            inputs:
+              ConnectionType: AzureRM
+              azureSubscription: $(AzureSubscription)
+              appType: webApp
+              WebAppName: $(WebAppName)
+              packageForLinux: '$(Pipeline.Workspace)/site/*.zip'
+              JSONFiles: 'appsettings.json'
+          
+
