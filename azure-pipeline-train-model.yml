@@ -1,0 +1,241 @@
+name: 1.0.0$(Rev:.r)
+
+trigger:
+  paths:
+    exclude:
+    - webapp/*
+    - azure-pipeline-webapp.yml
+
+variables:
+  AzureSubscription: 10M Client Demo
+  RGName: cd-mlops
+  Location: westus2
+  WorkspaceName: cdmlops
+  ExperimentName: diabetes
+  ClusterName: cdmlops
+  ContainerName: diabetesdata
+  DataFileName: diabetes_pima.csv
+  TrainingScript: train_pima_model.py
+  ModelName: basicmodel
+  ServiceName: diabetes-aci
+  VMSize: Standard_DS2_V2
+  MinNodes: 0
+  MaxNodes: 2
+  IdleSecondsBeforeScaleDown: 300
+  CreatedBy: colin
+
+stages:
+- stage: provisionWorkspace
+  displayName: Provision Workspace
+  jobs:
+  - deployment: provisionWorkspace
+    displayName: Provision ML Workspace
+    pool:
+      vmImage: ubuntu-latest
+    environment:
+      Workspace
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - task: AzureCLI@2
+            displayName: Install az ml extension
+            inputs:
+              azureSubscription: $(AzureSubscription)
+              scriptType: bash
+              scriptLocation: inlineScript
+              inlineScript: |
+                echo "Installing ml extension for az"
+                az extension add --name azure-cli-ml
+
+          - task: AzureCLI@2
+            displayName: Provision RG and ML Workspace
+            inputs:
+              azureSubscription: $(AzureSubscription)
+              scriptType: bash
+              scriptLocation: inlineScript
+              inlineScript: |
+                # create resource group
+                echo "Creating resource group $RG in $LOCATION"
+                az group create --name $RG -l $LOCATION --tags createdBy=$CREATEDBY purpose=demo
+
+                # create an ML Workspace
+                echo "Creating ML workspace $WORKSPACE"
+                az ml workspace create -g $RG -w $WORKSPACE -l $LOCATION --exist-ok --yes
+
+                # create a compute target
+                echo "Creating compute target $CLUSTER"
+                az ml computetarget create amlcompute -g $RG -w $WORKSPACE -n $CLUSTER -s $VMSIZE \
+                    --min-nodes $MINNODES --max-nodes $MAXNODES \
+                    --idle-seconds-before-scaledown $IDLESECONDSBEFORESCALEDOWN --remote-login-port-public-access Disabled
+            env:
+              RG: $(RGName)
+              LOCATION: $(Location)
+              CREATEDBY: $(CreatedBy)
+              WORKSPACE: $(WorkspaceName)
+              CLUSTER: $(ClusterName)
+              MINNODES: $(MinNodes)
+              MAXNODES: $(MaxNodes)
+              VMSIZE: $(Standard_DS2_V2)
+              IDLESECONDSBEFORESCALEDOWN: $(IdleSecondsBeforeScaleDown)
+
+- stage: trainModel
+  dependsOn: provisionWorkspace
+  displayName: Train Model
+  jobs:
+  - deployment: trainModel
+    displayName: Train Model
+    pool:
+      vmImage: ubuntu-latest
+    environment:
+      Workspace
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - checkout: self   # get config files in repo
+
+          - task: AzureCLI@2
+            displayName: Install az ml extension
+            inputs:
+              azureSubscription: $(AzureSubscription)
+              scriptType: bash
+              scriptLocation: inlineScript
+              inlineScript: |
+                echo "Installing ml extension for az"
+                az extension add --name azure-cli-ml
+
+          - task: AzureCLI@2
+            displayName: Upload training data
+            inputs:
+              azureSubscription: $(AzureSubscription)
+              scriptType: bash
+              scriptLocation: inlineScript
+              inlineScript: |
+                echo "Uploading training data"
+                dataStoreName=$(az ml datastore show-default -w $WORKSPACE -g $RG --query name -o tsv)
+                az ml datastore upload -w $WORKSPACE -g $RG -n $dataStoreName -p data -u $CONTAINER --overwrite true
+                
+                # create a variable with the datastoreName for subsequent tasks
+                echo "##vso[task.setvariable variable=DataStoreName;]$dataStoreName"
+            env:
+              RG: $(RGName)
+              LOCATION: $(Location)
+              WORKSPACE: $(WorkspaceName)
+              CONTAINER: $(ContainerName)
+          
+          - task: AzureCLI@2
+            displayName: Train model
+            inputs:
+              azureSubscription: $(AzureSubscription)
+              scriptType: bash
+              scriptLocation: inlineScript
+              inlineScript: |
+                # create folders for artifacts
+                echo "Creating output folders $ROOTFOLDER/models and /metadata"
+                mkdir $ROOTFOLDER/models -p && mkdir $ROOTFOLDER/metadata -p
+
+                # train model (basic)
+                rm -f metadata/run.json
+                echo "Training model using experiment $EXPERIMENT and script $TRAININGSCRIPT"
+                az ml run submit-script -g $RG -w $WORKSPACE -e $EXPERIMENT --ct $CLUSTER \
+                    -d training/conda_dependencies.yml --path training -c train_basic \
+                    -t $ROOTFOLDER/metadata/run.json $TRAININGSCRIPT $DATASTORENAME $CONTAINER $DATAFILENAME
+                
+                ls -la $ROOTFOLDER/metadata
+            env:
+              RG: $(RGName)
+              CLUSTER: $(ClusterName)
+              WORKSPACE: $(WorkspaceName)
+              CONTAINER: $(ContainerName)
+              EXPERIMENT: $(ExperimentName)
+              DATASTORENAME: $(DataStoreName)
+              TRAININGSCRIPT: $(TrainingScript)
+              DATAFILENAME: $(DataFileName)
+              ROOTFOLDER: $(Pipeline.Workspace)/training
+
+          - task: AzureCLI@2
+            displayName: Register and download model
+            inputs:
+              azureSubscription: $(AzureSubscription)
+              scriptType: bash
+              scriptLocation: inlineScript
+              inlineScript: |
+                # register model
+                echo "Registering model $MODELNAME"
+                az ml model register -g $RG -w $WORKSPACE -n $MODELNAME -f $ROOTFOLDER/metadata/run.json \
+                    --asset-path outputs/models/sklearn_diabetes_model.pkl \
+                    -d "Basic Linear model using diabetes dataset" \
+                    --model-framework ScikitLearn -t $ROOTFOLDER/metadata/model.json \
+                    --tag data=diabetes \
+                    --tag model=regression \
+                    --tag type=basic \
+                    --tag build=$BUILDNUMBER
+
+                # download model
+                modelId=$(jq -r .modelId $ROOTFOLDER/metadata/model.json)
+                az ml model download -g $RG -w $WORKSPACE -i $modelId -t $ROOTFOLDER/models --overwrite
+            env:
+              RG: $(RGName)
+              WORKSPACE: $(WorkspaceName)
+              MODELNAME: $(ModelName)
+              BUILDNUMBER: $(Build.BuildNumber)
+              ROOTFOLDER: $(Pipeline.Workspace)/training
+          
+          - task: PublishPipelineArtifact@1
+            displayName: Publish Artifact
+            inputs:
+              targetPath: $(Pipeline.Workspace)/training
+              ArtifactName: model
+
+- stage: devDeployModel
+  dependsOn: trainModel
+  displayName: Deploy Model to DEV
+  jobs:
+  - deployment: deployModel
+    displayName: Deploy Model
+    pool:
+      vmImage: ubuntu-latest
+    environment:
+      Workspace
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - download: current
+            artifact: model  # get model
+
+          - checkout: self   # get config files in repo
+
+          - task: AzureCLI@2
+            displayName: Install az ml extension
+            inputs:
+              azureSubscription: $(AzureSubscription)
+              scriptType: bash
+              scriptLocation: inlineScript
+              inlineScript: |
+                echo "Installing ml extension for az"
+                az extension add --name azure-cli-ml
+
+          - task: AzureCLI@2
+            displayName: Deploy Model to ACI
+            inputs:
+              azureSubscription: $(AzureSubscription)
+              scriptType: bash
+              scriptLocation: inlineScript
+              inlineScript: |
+                echo "Deploying model to service $SERVICENAME"
+                az ml model deploy -g $RG -w $WORKSPACE -n $SERVICENAME -f $ARTIFACTFOLDER/metadata/model.json \
+                  --dc aciDeploymentConfig.yml --ic inferenceConfig.yml --overwrite
+              workingDirectory: deployment
+            env:
+              ARTIFACTFOLDER: $(Pipeline.Workspace)/model
+              RG: $(RGName)
+              LOCATION: $(Location)
+              WORKSPACE: $(WorkspaceName)
+              SERVICENAME: $(ServiceName)
+          
+          #- task: # TODO: pytest to test API is running
+      
+
+  
