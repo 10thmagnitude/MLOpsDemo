@@ -2,6 +2,12 @@
 
 This repo shows how to use Azure Machine Learning (ML) Services and Azure DevOps to manage machine learning using DevOps principles and practices.
 
+## Model
+A model is trained on Pima Indian Diabetes data to predict the likelihood of diabetes from health markers. The training is done using Azure Machine learning workspaces and every step of the process is in code. The trained model is deployed to Azure Container Instances (ACI) for consuming.
+
+## Website
+A simple website is deployed that consumes a deployed model. See [this page](https://cd-diabetes-dev.azurewebsites.net/diabetes) for a demo.
+
 ## Status
 
 ### Model Pipeline
