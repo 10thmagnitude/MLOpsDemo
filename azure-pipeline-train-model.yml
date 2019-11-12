@@ -131,6 +131,7 @@ stages:
               scriptLocation: inlineScript
               inlineScript: |
                 # create folders for artifacts
+                echo "Creating output folders $ROOTFOLDER/models and /metadata"
                 mkdir $ROOTFOLDER/models -p && mkdir $ROOTFOLDER/metadata -p
 
                 # train model (basic)
@@ -139,6 +140,8 @@ stages:
                 az ml run submit-script -g $RG -w $WORKSPACE -e $EXPERIMENT --ct $CLUSTER \
                     -d training/conda_dependencies.yml --path training -c train_basic \
                     -t $ROOTFOLDER/metadata/run.json $TRAININGSCRIPT $DATASTORENAME $CONTAINER $DATAFILENAME
+                
+                ls -la $ROOTFOLDER/metadata
             env:
               RG: $(RGName)
               CLUSTER: $(ClusterName)
@@ -159,7 +162,7 @@ stages:
               inlineScript: |
                 # register model
                 echo "Registering model $MODELNAME"
-                az ml model register -g $RG -w $WORKSPACE -n $MODELNAME -f $ROOTFOLDER/metadata/metadata/run.json \
+                az ml model register -g $RG -w $WORKSPACE -n $MODELNAME -f $ROOTFOLDER/metadata/run.json \
                     --asset-path outputs/models/sklearn_diabetes_model.pkl \
                     -d "Basic Linear model using diabetes dataset" \
                     --model-framework ScikitLearn -t $ROOTFOLDER/metadata/model.json \
