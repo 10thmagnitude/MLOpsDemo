@@ -19,7 +19,7 @@ stages:
 - stage: build
   displayName: Build website
   jobs:
-    job: build
+  - job: build
     displayName: Compile and Package
     pool:
       vmImage: ubuntu-latest
