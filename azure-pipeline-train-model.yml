@@ -37,7 +37,7 @@ stages:
       runOnce:
         deploy:
           steps:
-          - task: azureCLI   # TODO
+          - task: AzureCLI@2
             displayName: Provision RG and ML Workspace
             inputs:
               azureSubscription: $(AzureSubscription)
@@ -81,7 +81,7 @@ stages:
       runOnce:
         deploy:
           steps:
-          - task: azureCLI   # TODO
+          - task: AzureCLI@2
             displayName: Upload training data
             inputs:
               azureSubscription: $(AzureSubscription)
@@ -96,7 +96,7 @@ stages:
               LOCATION: $(Location)
               CONTAINERNAME: $(ContainerName)
           
-          - task: azureCLI   # TODO
+          - task: AzureCLI@2
             displayName: Upload training data
             inputs:
               azureSubscription: $(AzureSubscription)
@@ -114,7 +114,7 @@ stages:
               LOCATION: $(Location)
               CONTAINERNAME: $(ContainerName)
           
-          - task: azureCLI   # TODO
+          - task: AzureCLI@2
             displayName: Train model
             inputs:
               azureSubscription: $(AzureSubscription)
@@ -139,7 +139,7 @@ stages:
               TRAININGSCRIPT: $(TrainingScript)
               DATAFILENAME: $(DataFileName)
 
-          - task: azureCLI   # TODO
+          - task: AzureCLI@2
             displayName: Register and download model
             inputs:
               azureSubscription: $(AzureSubscription)
@@ -201,7 +201,7 @@ stages:
           - download: current
             artifact: model  # get model
           - checkout: self   # get config files in repo
-          - task: azureCLI   # TODO
+          - task: AzureCLI@2
             displayName: Deploy Model to ACI
             inputs:
               azureSubscription: $(AzureSubscription)
