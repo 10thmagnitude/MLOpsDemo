@@ -38,7 +38,7 @@ public class PredictionAPIClient : IPredictionAPIClient
             var jsonData = await result.Content.ReadAsStringAsync();
             jsonData = jsonData.Substring(1, jsonData.Length - 2).Replace("\\", "");
             var resultData = JsonSerializer.Deserialize<PredictionResult>(jsonData);
-            return resultData.result[0] == 1;
+            return resultData.result[0] == 0;
         }
         else
         {

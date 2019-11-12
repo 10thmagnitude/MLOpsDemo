@@ -41,6 +41,7 @@ namespace webapp.Controllers
         }
 
         [HttpPost]
+        [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
         public async Task<IActionResult> Predict(DiabetesViewModel model)
         {
             // TODO: call API
