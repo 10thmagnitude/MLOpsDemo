@@ -63,8 +63,8 @@ stages:
                 az ml workspace create -g $RG -w $WORKSPACE -l $LOCATION --exist-ok --yes
 
                 # create a compute target
-                echo "Creating compute target $CLUSTERNAME"
-                az ml computetarget create amlcompute -g $RG -w $WORKSPACE -n $CLUSTERNAME -s $VMSIZE \
+                echo "Creating compute target $CLUSTER"
+                az ml computetarget create amlcompute -g $RG -w $WORKSPACE -n $CLUSTER -s $VMSIZE \
                     --min-nodes $MINNODES --max-nodes $MAXNODES \
                     --idle-seconds-before-scaledown $IDLESECONDSBEFORESCALEDOWN --remote-login-port-public-access Disabled
             env:
@@ -72,9 +72,10 @@ stages:
               LOCATION: $(Location)
               CREATEDBY: $(CreatedBy)
               WORKSPACE: $(WorkspaceName)
-              CLUSTERNAME: $(ClusterName)
+              CLUSTER: $(ClusterName)
               MINNODES: $(MinNodes)
               MAXNODES: $(MaxNodes)
+              VMSIZE: $(Standard_DS2_V2)
               IDLESECONDSBEFORESCALEDOWN: $(IdleSecondsBeforeScaleDown)
 
 - stage: trainModel
@@ -110,7 +111,7 @@ stages:
               inlineScript: |
                 echo "Uploading training data"
                 dataStoreName=$(az ml datastore show-default -w $WORKSPACE -g $RG --query name -o tsv)
-                az ml datastore upload -w $WORKSPACE -g $RG -n $dataStoreName -p ../data -u $CONTAINERNAME --overwrite true
+                az ml datastore upload -w $WORKSPACE -g $RG -n $dataStoreName -p ../data -u $CONTAINER --overwrite true
                 
                 # create a variable with the datastoreName for subsequent tasks
                 echo "#vso[task.setvariable variable=DataStoreName;]$dataStoreName"
@@ -118,7 +119,7 @@ stages:
               RG: $(RGName)
               LOCATION: $(Location)
               WORKSPACE: $(WorkspaceName)
-              CONTAINERNAME: $(ContainerName)
+              CONTAINER: $(ContainerName)
           
           - task: AzureCLI@2
             displayName: Train model
@@ -132,16 +133,17 @@ stages:
 
                 # train model (basic)
                 rm -f metadata/run.json
-                echo "Training model using experiment $EXPERIMENTNAME and script $TRAININGSCRIPT"
-                az ml run submit-script -g $RG -w $WORKSPACE -e $EXPERIMENTNAME --ct $CLUSTERNAME \
+                echo "Training model using experiment $EXPERIMENT and script $TRAININGSCRIPT"
+                az ml run submit-script -g $RG -w $WORKSPACE -e $EXPERIMENT --ct $CLUSTER \
                     -d ../training/conda_dependencies.yml --path ../training -c train_basic \
-                    -t metadata/run.json $TRAININGSCRIPT $DATASTORENAME $CONTAINERNAME $DATAFILENAME
+                    -t metadata/run.json $TRAININGSCRIPT $DATASTORENAME $CONTAINER $DATAFILENAME
             env:
               RG: $(RGName)
-              CLUSTERNAME: $(ClusterName)
-              CONTAINERNAME: $(ContainerName)
+              CLUSTER: $(ClusterName)
+              WORKSPACE: $(WorkspaceName)
+              CONTAINER: $(ContainerName)
+              EXPERIMENT: $(ExperimentName)
               DATASTORENAME: $(DataStoreName)
-              EXPERIMENTNAME: $(ExperimentName)
               TRAININGSCRIPT: $(TrainingScript)
               DATAFILENAME: $(DataFileName)
 
