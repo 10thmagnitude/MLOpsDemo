@@ -44,7 +44,6 @@ namespace webapp.Controllers
         [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
         public async Task<IActionResult> Predict(DiabetesViewModel model)
         {
-            // TODO: call API
             var result = await _predictionAPI.GetPrediction(model);
             TempData["_statusMessage"] = new StatusMessageViewModel() 
             { 
