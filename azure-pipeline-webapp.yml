@@ -10,6 +10,7 @@ variables:
   RGName: cd-mlops
   Location: westus2
   WebAppName: cd-diabetes
+  SKU: B1
   CreatedBy: colin
 
 stages:
@@ -70,9 +71,11 @@ stages:
               scriptType: bash
               scriptLocation: inlineScript
               inlineScript: |
-                # create resource group
                 echo "Creating resource group $RG in $LOCATION"
                 az group create --name $RG -l $LOCATION --tags createdBy=$CREATEDBY purpose=demo
 
-                # create azure web app
-                # TODO
+                echo "Creating app service plan"
+                az appservice plan create -n $APPNAME-plan -g $RG -l $LOCATION --sku $SKU
+
+                echo "Creating app service"
+                az webapp create -n $APPNAME -p $APPNAME-plan -g $RG
