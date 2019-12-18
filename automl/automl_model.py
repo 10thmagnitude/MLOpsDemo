@@ -1,69 +1,135 @@
 import pandas as pd
 import sys
+import os
+import logging
 
-from sklearn.model_selection import train_test_split
-from sklearn.impute import SimpleImputer
-
-from azureml.core import Workspace
+from azureml.core import Workspace, Dataset, Datastore
 from azureml.core.experiment import Experiment
+from azureml.core.compute import AmlCompute
+from azureml.core.runconfig import RunConfiguration
+from azureml.core.conda_dependencies import CondaDependencies
 
 from azureml.train.automl import AutoMLConfig
 from azureml.train.automl.run import AutoMLRun
+from azureml.train.automl.runtime import AutoMLStep
+
+from azureml.data.data_reference import DataReference 
+from azureml.pipeline.core import PipelineData
+from azureml.pipeline.steps import PythonScriptStep
+
+from azureml.pipeline.core import Pipeline
+
+workspace_name = 'cdmlops'
+compute_target_name = 'cdmlops'
+dataset_name = 'diabetesdata/diabetes_pima.csv'
+subscription_id = '7cb97533-0a52-4037-a51e-8b8d707367ad'
+resource_group = 'cd-mlops'
 
 # get the args
-workspace_name = sys.argv[1]
-datacontainer_name = sys.argv[2]
-training_file_name = sys.argv[3]
-subscription_id = sys.argv[4]
-resource_group = sys.argv[5]
+# workspace_name = sys.argv[1]
+# compute_target_name = sys.argv[2]
+# dataset_name = sys.argv[3]
+# subscription_id = sys.argv[4]
+# resource_group = sys.argv[5]
 
 # get the workspace
 ws = Workspace.get(name=workspace_name, subscription_id=subscription_id, resource_group=resource_group)
 experiment = Experiment(workspace=ws, name='automl-diabetes')
+aml_compute = AmlCompute(ws, compute_target_name)
 
 # read in the data
-full_file_name = './{}/{}/{}'.format(workspace_name, datacontainer_name, training_file_name)
-df = pd.read_csv(full_file_name)
-print("Columns:", df.columns) 
-print("Diabetes data set dimensions : {}".format(df.shape))
+datastore = ws.get_default_datastore()
+blob_diabetes_data = DataReference(
+    datastore=datastore,
+    data_reference_name="diabetes_data",
+    path_on_datastore="diabetes_data/diabetes_pima.csv")
 
-# drop uneccessary (duplicate) column - inches for cm
-del df['skin']
+# Create a new runconfig object
+aml_run_config = RunConfiguration()
+aml_run_config.target = aml_compute
+aml_run_config.environment.docker.enabled = True
+aml_run_config.environment.docker.base_image = "mcr.microsoft.com/azureml/base:0.2.1"
+aml_run_config.environment.python.user_managed_dependencies = False
+aml_run_config.auto_prepare_environment = True
+aml_run_config.environment.python.conda_dependencies = CondaDependencies.create(
+    conda_packages=['pandas', 'scikit-learn'], 
+    pip_packages=['azureml-sdk', 'azureml-dataprep', 'azureml-train-automl'], 
+    pin_sdk_version=False)
 
-# map true/false to 1/0
-diabetes_map = {True : 1, False : 0}
-df['diabetes'] = df['diabetes'].map(diabetes_map)
+scripts_folder = './scripts'
+prepared_data = PipelineData("diabetes_data_prep", datastore=datastore)
 
-# split data for training and testing
-feature_col_names = ['num_preg', 'glucose_conc', 'diastolic_bp', 'thickness', 'insulin', 'bmi', 'diab_pred', 'age']
-predicted_class_names = ['diabetes']
+prep_data_step = PythonScriptStep(
+    name="Prep diabetes data",
+    script_name="prep_data.py", 
+    arguments=["--input_file", blob_diabetes_data, 
+               "--output_path", prepared_data],
+    inputs=[blob_diabetes_data],
+    outputs=[prepared_data],
+    compute_target=aml_compute,
+    runconfig=aml_run_config,
+    source_directory=scripts_folder,
+    allow_reuse=True
+)
 
-X = df[feature_col_names].values
-y = df[predicted_class_names].values
-split_test_size = 0.30
+feature_names = str(['num_preg', 'glucose_conc', 'diastolic_bp', 'thickness', 'insulin', 'bmi', 'diab_pred', 'age']).replace(",", ";")
+label_names = str(['diabetes']).replace(",", ";")
 
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=split_test_size, random_state=42) 
+output_split_train_x = PipelineData("diabetes_automl_split_train_x", datastore=datastore)
+output_split_train_y = PipelineData("diabetes_automl_split_train_y", datastore=datastore)
+output_split_test_x = PipelineData("diabetes_automl_split_test_x", datastore=datastore)
+output_split_test_y = PipelineData("diabetes_automl_split_test_y", datastore=datastore)
 
-# impute mean for all 0-value readings
-fill_0 = SimpleImputer(missing_values=0, strategy="mean")
-X_train = fill_0.fit_transform(X_train)
-X_test = fill_0.fit_transform(X_test)
+train_test_split_step = PythonScriptStep(
+    name="Split train and test data",
+    script_name="train_test_split.py", 
+    arguments=["--input_prepared_data", prepared_data, 
+               "--input_split_features", feature_names,
+               "--input_split_labels", label_names,
+               "--output_split_train_x", output_split_train_x,
+               "--output_split_train_y", output_split_train_y,
+               "--output_split_test_x", output_split_test_x,
+               "--output_split_test_y", output_split_test_y],
+    inputs=[prepared_data],
+    outputs=[output_split_train_x, output_split_train_y, output_split_test_x, output_split_test_y],
+    compute_target=aml_compute,
+    runconfig=aml_run_config,
+    source_directory=scripts_folder,
+    allow_reuse=True
+)
 
-# create the automl config
-automl_regressor = AutoMLConfig(
-    task='regression',
-    experiment_timeout_minutes=15,
-    whitelist_models='kNN regressor',
-    primary_metric='spearman_correlation', #'r2_score',
-    training_data=df,
-    label_column_name='diabetes',
-    n_cross_validations=5)
+automl_settings = {
+    "name": "AutoML_Diabetes_Experiment",
+    "iteration_timeout_minutes": 15,
+    "iterations": 25,
+    "n_cross_validations": 5,
+    "primary_metric": 'spearman_correlation',  # 'r2_score'
+    "preprocess": False,
+    "max_concurrent_iterations": 8,
+    "verbosity": logging.INFO
+}
 
-run = experiment.submit(automl_regressor, show_output=True)
-best_run, fitted_model = run.get_output()
-print(best_run)
-print(fitted_model)
+automl_config = AutoMLConfig(task='regression',
+                             debug_log = 'auto_ml_errors.log',
+                             compute_target=aml_compute,
+                             path=os.getcwd() + '/automl',
+                             data_script='get_data.py',
+                             **automl_settings,
+                            )
 
-y_predict = fitted_model.predict(X_test.values)
-print(y_predict[:10])
+train_step = AutoMLStep(
+    name='AutoML_Regression',
+    automl_config=automl_config,
+    inputs=[output_split_train_x, output_split_train_y],
+    allow_reuse=True,
+    hash_paths=[os.path.realpath(scripts_folder)])
 
+pipeline_steps = [train_step]
+
+pipeline = Pipeline(workspace = ws, steps=pipeline_steps)
+print("Pipeline is built.")
+
+pipeline_run = experiment.submit(pipeline, regenerate_outputs=False)
+
+print("Pipeline submitted for execution.")
+pipeline_run.wait_for_completion()

@@ -38,3 +38,7 @@ msbuild.wrn
 
 # Visual Studio 2015
 .vs/
+automl_errors.log
+automl.log
+azureml_automl.log
+.azureml
