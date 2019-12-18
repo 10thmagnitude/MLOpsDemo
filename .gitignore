@@ -42,3 +42,4 @@ automl_errors.log
 automl.log
 azureml_automl.log
 .azureml
+automl/auto_ml_errors.log

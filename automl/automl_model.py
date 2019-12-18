@@ -33,16 +33,21 @@ resource_group = 'cd-mlops'
 # resource_group = sys.argv[5]
 
 # get the workspace
+print("Getting a reference to workspace %s" % workspace_name)
 ws = Workspace.get(name=workspace_name, subscription_id=subscription_id, resource_group=resource_group)
 experiment = Experiment(workspace=ws, name='automl-diabetes')
 aml_compute = AmlCompute(ws, compute_target_name)
 
 # read in the data
+print("Getting a reference to default datastore")
 datastore = ws.get_default_datastore()
+
+print("Preparing the 'prep data' step")
 blob_diabetes_data = DataReference(
     datastore=datastore,
     data_reference_name="diabetes_data",
-    path_on_datastore="diabetes_data/diabetes_pima.csv")
+    path_on_datastore="diabetesdata/diabetes_pima.csv")
+blob_diabetes_data.as_download()
 
 # Create a new runconfig object
 aml_run_config = RunConfiguration()
@@ -50,7 +55,6 @@ aml_run_config.target = aml_compute
 aml_run_config.environment.docker.enabled = True
 aml_run_config.environment.docker.base_image = "mcr.microsoft.com/azureml/base:0.2.1"
 aml_run_config.environment.python.user_managed_dependencies = False
-aml_run_config.auto_prepare_environment = True
 aml_run_config.environment.python.conda_dependencies = CondaDependencies.create(
     conda_packages=['pandas', 'scikit-learn'], 
     pip_packages=['azureml-sdk', 'azureml-dataprep', 'azureml-train-automl'], 
@@ -72,6 +76,7 @@ prep_data_step = PythonScriptStep(
     allow_reuse=True
 )
 
+print("Preparing the 'split train and data' step")
 feature_names = str(['num_preg', 'glucose_conc', 'diastolic_bp', 'thickness', 'insulin', 'bmi', 'diab_pred', 'age']).replace(",", ";")
 label_names = str(['diabetes']).replace(",", ";")
 
@@ -98,6 +103,7 @@ train_test_split_step = PythonScriptStep(
     allow_reuse=True
 )
 
+print("Preparing the 'autoML' step")
 automl_settings = {
     "name": "AutoML_Diabetes_Experiment",
     "iteration_timeout_minutes": 15,
@@ -112,7 +118,7 @@ automl_settings = {
 automl_config = AutoMLConfig(task='regression',
                              debug_log = 'auto_ml_errors.log',
                              compute_target=aml_compute,
-                             path=os.getcwd() + '/automl',
+                             path=os.path.realpath(scripts_folder),
                              data_script='get_data.py',
                              **automl_settings,
                             )
@@ -121,15 +127,14 @@ train_step = AutoMLStep(
     name='AutoML_Regression',
     automl_config=automl_config,
     inputs=[output_split_train_x, output_split_train_y],
-    allow_reuse=True,
-    hash_paths=[os.path.realpath(scripts_folder)])
+    allow_reuse=True)
 
+print("Building pipeline")
 pipeline_steps = [train_step]
-
 pipeline = Pipeline(workspace = ws, steps=pipeline_steps)
-print("Pipeline is built.")
 
+print("Submitting pipeline")
 pipeline_run = experiment.submit(pipeline, regenerate_outputs=False)
 
-print("Pipeline submitted for execution.")
+print("Waiting for pipeline completion")
 pipeline_run.wait_for_completion()

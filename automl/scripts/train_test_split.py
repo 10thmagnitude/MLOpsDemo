@@ -2,6 +2,7 @@ import argparse
 import os
 import azureml.dataprep as dprep
 import azureml.core
+import pandas as pd
 
 from sklearn.model_selection import train_test_split
 from sklearn.impute import SimpleImputer
@@ -34,7 +35,6 @@ print("Argument 6 (output test features split path): %s" % args.output_split_tes
 print("Argument 7 (output test labels split path): %s" % args.output_split_test_y)
 
 input_data = dprep.read_csv(args.input_prepared_data)
-output_path = args.output_split_path
 
 split_features = [s.strip().strip("'") for s in args.input_split_features.strip("[]").split("\\;")]
 split_labels = [s.strip().strip("'") for s in args.input_split_labels.strip("[]").split("\\;")]
@@ -46,8 +46,8 @@ x_train, x_test, y_train, y_test = train_test_split(x_df, y_df, test_size=0.3, r
 
 # impute mean for all 0-value readings
 fill_0 = SimpleImputer(missing_values=0, strategy="mean")
-x_train = fill_0.fit_transform(x_train)
-x_test = fill_0.fit_transform(x_test)
+x_train = pd.DataFrame(fill_0.fit_transform(x_train))
+x_test = pd.DataFrame(fill_0.fit_transform(x_test))
 
 if not (args.output_split_train_x is None and
         args.output_split_test_x is None and
