@@ -27,8 +27,8 @@ parser.add_argument("--output_split_test_y", type=str, help="output split test l
 args = parser.parse_args()
 
 print("Argument 1 (input prepared data): %s" % args.input_prepared_data)
-print("Argument 2 (input features): %s" % str(args.input_split_features.strip("[]").split("\\;")))
-print("Argument 3 (input labels): %s" % str(args.input_split_labels.strip("[]").split("\\;")))
+print("Argument 2 (input features): %s" % str(args.input_split_features.strip("[]").split(";")))
+print("Argument 3 (input labels): %s" % str(args.input_split_labels.strip("[]").split(";")))
 print("Argument 4 (output training features split path): %s" % args.output_split_train_x)
 print("Argument 5 (output training labels split path): %s" % args.output_split_train_y)
 print("Argument 6 (output test features split path): %s" % args.output_split_test_x)
@@ -36,8 +36,8 @@ print("Argument 7 (output test labels split path): %s" % args.output_split_test_
 
 input_data = dprep.read_csv(args.input_prepared_data)
 
-split_features = [s.strip().strip("'") for s in args.input_split_features.strip("[]").split("\\;")]
-split_labels = [s.strip().strip("'") for s in args.input_split_labels.strip("[]").split("\\;")]
+split_features = [s.strip().strip("'") for s in args.input_split_features.strip("[]").split(";")]
+split_labels = [s.strip().strip("'") for s in args.input_split_labels.strip("[]").split(";")]
 
 x_df = input_data.keep_columns(split_features).to_pandas_dataframe()
 y_df = input_data.keep_columns(split_labels).to_pandas_dataframe()
@@ -45,9 +45,10 @@ y_df = input_data.keep_columns(split_labels).to_pandas_dataframe()
 x_train, x_test, y_train, y_test = train_test_split(x_df, y_df, test_size=0.3, random_state=42)
 
 # impute mean for all 0-value readings
+x_cols = x_train.columns
 fill_0 = SimpleImputer(missing_values=0, strategy="mean")
-x_train = pd.DataFrame(fill_0.fit_transform(x_train))
-x_test = pd.DataFrame(fill_0.fit_transform(x_test))
+x_train = pd.DataFrame(fill_0.fit_transform(x_train), columns=x_cols)
+x_test = pd.DataFrame(fill_0.fit_transform(x_test), columns=x_cols)
 
 if not (args.output_split_train_x is None and
         args.output_split_test_x is None and
