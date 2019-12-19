@@ -79,9 +79,6 @@ prep_data_step = PythonScriptStep(
 )
 
 print("Preparing the 'split train and data' step")
-feature_names = str(['num_preg', 'glucose_conc', 'diastolic_bp', 'thickness', 'insulin', 'bmi', 'diab_pred', 'age']).replace(",", ";")
-label_names = str(['diabetes']).replace(",", ";")
-
 output_split_train_x = PipelineData("diabetes_automl_split_train_x", datastore=datastore)
 output_split_train_y = PipelineData("diabetes_automl_split_train_y", datastore=datastore)
 output_split_test_x = PipelineData("diabetes_automl_split_test_x", datastore=datastore)
@@ -91,8 +88,6 @@ train_test_split_step = PythonScriptStep(
     name="Split train and test data",
     script_name="train_test_split.py", 
     arguments=["--input_prepared_data", prepared_data, 
-               "--input_split_features", feature_names,
-               "--input_split_labels", label_names,
                "--output_split_train_x", output_split_train_x,
                "--output_split_train_y", output_split_train_y,
                "--output_split_test_x", output_split_test_x,
