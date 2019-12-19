@@ -45,10 +45,9 @@ y_df = input_data.keep_columns(split_labels).to_pandas_dataframe()
 x_train, x_test, y_train, y_test = train_test_split(x_df, y_df, test_size=0.3, random_state=42)
 
 # impute mean for all 0-value readings
-x_cols = x_train.columns
 fill_0 = SimpleImputer(missing_values=0, strategy="mean")
-x_train = pd.DataFrame(fill_0.fit_transform(x_train), columns=x_cols)
-x_test = pd.DataFrame(fill_0.fit_transform(x_test), columns=x_cols)
+x_train = pd.DataFrame(fill_0.fit_transform(x_train), columns=split_features)
+x_test = pd.DataFrame(fill_0.fit_transform(x_test), columns=split_features)
 
 if not (args.output_split_train_x is None and
         args.output_split_test_x is None and

@@ -196,10 +196,4 @@ print("Prediction results:")
 prediction_results = pd.DataFrame({'Actual':y_actual, 'Predicted':y_predict}).head(5)
 prediction_results
 
-model_dir = './model'
-model_file_name = 'automl_diabetes_model.pkl'
-model_path = os.path.join(model_dir, model_file_name)
-
-print("Dump the model to %s" % model_path)
-os.makedirs(model_dir, exist_ok=True)
-dump(fitted_model, model_path)
+print("Model pkl file is model.pkl in %s" % os.getcwd())
