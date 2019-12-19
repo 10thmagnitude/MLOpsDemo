@@ -15,9 +15,11 @@ from azureml.train.automl.runtime import AutoMLStep
 
 from azureml.data.data_reference import DataReference 
 from azureml.pipeline.core import PipelineData
-from azureml.pipeline.steps import PythonScriptStep
-
 from azureml.pipeline.core import Pipeline
+from azureml.pipeline.steps import PythonScriptStep
+import azureml.dataprep as dprep
+
+from joblib import dump
 
 workspace_name = 'cdmlops'
 compute_target_name = 'cdmlops'
@@ -138,3 +140,66 @@ pipeline_run = experiment.submit(pipeline, regenerate_outputs=False)
 
 print("Waiting for pipeline completion")
 pipeline_run.wait_for_completion()
+
+def get_download_path(download_path, output_name):
+    output_folder = os.listdir(download_path + '/azureml')[0]
+    path =  download_path + '/azureml/' + output_folder + '/' + output_name
+    return path
+
+def fetch_df(step, output_name):
+    output_data = step.get_output_data(output_name)
+    
+    download_path = './outputs/' + output_name
+    output_data.download(download_path)
+    df_path = get_download_path(download_path, output_name) + '/data'
+    return dprep.auto_read_file(path=df_path)
+
+print("Get the best model")
+# workaround to get the automl run as its the last step in the pipeline 
+# and get_steps() returns the steps from latest to first
+for step in pipeline_run.get_steps():
+    automl_step_run_id = step.id
+    print(step.name)
+    print(automl_step_run_id)
+    break
+
+automl_run = AutoMLRun(experiment = experiment, run_id=automl_step_run_id)
+best_run, fitted_model = automl_run.get_output()
+print(best_run)
+print(fitted_model)
+
+print("Get metrics")
+children = list(automl_run.get_children())
+metricslist = {}
+for run in children:
+    properties = run.get_properties()
+    metrics = {k: v for k, v in run.get_metrics().items() if isinstance(v, float)}
+    metricslist[int(properties['iteration'])] = metrics
+
+rundata = pd.DataFrame(metricslist).sort_index(1)
+rundata
+
+print("Get the test data")
+split_step = pipeline_run.find_step_run(train_test_split_step.name)[0]
+
+x_train = fetch_df(split_step, output_split_train_x.name).to_pandas_dataframe()
+y_train = fetch_df(split_step, output_split_train_y.name).to_pandas_dataframe()
+
+x_test = fetch_df(split_step, output_split_test_x.name).to_pandas_dataframe()
+y_test = fetch_df(split_step, output_split_test_y.name).to_pandas_dataframe()
+
+print("Test the model")
+y_predict = fitted_model.predict(x_test.values)
+y_actual = y_test.iloc[:,0].values.tolist()
+
+print("Prediction results:")
+prediction_results = pd.DataFrame({'Actual':y_actual, 'Predicted':y_predict}).head(5)
+prediction_results
+
+model_dir = './model'
+model_file_name = 'automl_diabetes_model.pkl'
+model_path = os.path.join(model_dir, model_file_name)
+
+print("Dump the model to %s" % model_path)
+os.makedirs(model_dir, exist_ok=True)
+dump(fitted_model, model_path)

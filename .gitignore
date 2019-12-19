@@ -43,3 +43,8 @@ automl.log
 azureml_automl.log
 .azureml
 automl/auto_ml_errors.log
+automl/outputs/diabetes_automl_split_test_x/azureml/4a388933-dd91-4f51-ae55-b98c4a1d615f/diabetes_automl_split_test_x/data
+automl/outputs/diabetes_automl_split_test_y/azureml/4a388933-dd91-4f51-ae55-b98c4a1d615f/diabetes_automl_split_test_y/data
+automl/outputs/diabetes_automl_split_train_x/azureml/4a388933-dd91-4f51-ae55-b98c4a1d615f/diabetes_automl_split_train_x/data
+automl/outputs/diabetes_automl_split_train_y/azureml/4a388933-dd91-4f51-ae55-b98c4a1d615f/diabetes_automl_split_train_y/data
+automl/model.pkl
