@@ -55,11 +55,11 @@ blob_diabetes_data.as_download()
 aml_run_config = RunConfiguration()
 aml_run_config.target = aml_compute
 aml_run_config.environment.docker.enabled = True
-aml_run_config.environment.docker.base_image = "mcr.microsoft.com/azureml/base:0.2.1"
+aml_run_config.environment.docker.base_image = "mcr.microsoft.com/azureml/base:intelmpi2018.3-ubuntu16.04"
 aml_run_config.environment.python.user_managed_dependencies = False
 aml_run_config.environment.python.conda_dependencies = CondaDependencies.create(
     conda_packages=['pandas', 'scikit-learn'], 
-    pip_packages=['azureml-sdk', 'azureml-dataprep', 'azureml-train-automl'], 
+    pip_packages=['azureml-sdk', 'azureml-dataprep', 'azureml-dataprep[pandas]', 'azureml-train-automl'], 
     pin_sdk_version=False)
 
 scripts_folder = './scripts'
