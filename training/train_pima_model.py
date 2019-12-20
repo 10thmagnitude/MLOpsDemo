@@ -4,6 +4,7 @@ import seaborn as sn
 
 import sys
 import os
+import argparse
 
 from joblib import dump
 
@@ -20,12 +21,21 @@ from azureml.core.run import Run
 run = Run.get_context()
 
 # get the args
-workspaceName = sys.argv[1]
-datacontainerName = sys.argv[2]
-trainingFileName = sys.argv[3]
+parser = argparse.ArgumentParser("train_pima_model")
+parser.add_argument("--data_store", type=str, help="name of data store")
+parser.add_argument("--data_container", type=str, help="name of data container")
+parser.add_argument("--training_file", type=str, help="name of training file")
+args = parser.parse_args()
+
+data_store = args.data_store
+data_container = args.data_container
+training_file = args.training_file
+print("data_store % s" % data_store)
+print("data_container % s" % data_container)
+print("training_file % s" % training_file)
 
 # read in the data
-fullFileName = './{}/{}/{}'.format(workspaceName, datacontainerName, trainingFileName)
+fullFileName = './{}/{}/{}'.format(data_store, data_container, training_file)
 df = pd.read_csv(fullFileName)
 print("Columns:", df.columns) 
 print("Diabetes data set dimensions : {}".format(df.shape))

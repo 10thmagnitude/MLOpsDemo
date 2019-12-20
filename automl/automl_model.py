@@ -2,6 +2,7 @@ import pandas as pd
 import sys
 import os
 import logging
+import argparse
 
 from azureml.core import Workspace, Dataset, Datastore
 from azureml.core.experiment import Experiment
@@ -22,18 +23,32 @@ import azureml.dataprep as dprep
 from sklearn import metrics
 from joblib import dump
 
-workspace_name = 'cdmlops'
-compute_target_name = 'cdmlops'
-dataset_name = 'diabetesdata/diabetes_pima.csv'
-subscription_id = '7cb97533-0a52-4037-a51e-8b8d707367ad'
-resource_group = 'cd-mlops'
+# parse the args
+parser = argparse.ArgumentParser("automl_model")
+parser.add_argument("--workspace", type=str, help="name of workspace", default='cdmlops')
+parser.add_argument("--compute_target", type=str, help="name of compute target", default='cdmlops')
+parser.add_argument("--dataset", type=str, help="name of dataset", default='diabetesdata/diabetes_pima.csv')
+parser.add_argument("--subscription_id", type=str, help="subscription id", default='7cb97533-0a52-4037-a51e-8b8d707367ad')
+parser.add_argument("--resource_group", type=str, help="name of resource group", default='cd-mlops')
 
-# get the args
-# workspace_name = sys.argv[1]
-# compute_target_name = sys.argv[2]
-# dataset_name = sys.argv[3]
-# subscription_id = sys.argv[4]
-# resource_group = sys.argv[5]
+args = parser.parse_args()
+workspace_name = args.workspace
+compute_target_name = args.compute_target
+dataset_name = args.dataset
+subscription_id = args.subscription_id
+resource_group = args.resource_group
+
+# workspace_name = 'cdmlops'
+# compute_target_name = 'cdmlops'
+# dataset_name = 'diabetesdata/diabetes_pima.csv'
+# subscription_id = '7cb97533-0a52-4037-a51e-8b8d707367ad'
+# resource_group = 'cd-mlops'
+
+print("workspace_name: %s" % workspace_name)
+print("compute_target_name: %s" % compute_target_name)
+print("dataset_name: %s" % dataset_name)
+print("subscription_id: %s" % subscription_id)
+print("resource_group: %s" % resource_group)
 
 # get the workspace
 print("Getting a reference to workspace %s" % workspace_name)

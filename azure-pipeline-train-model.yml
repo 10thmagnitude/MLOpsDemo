@@ -140,7 +140,8 @@ stages:
                 echo "Training model using experiment $EXPERIMENT and script $TRAININGSCRIPT"
                 az ml run submit-script -g $RG -w $WORKSPACE -e $EXPERIMENT --ct $CLUSTER \
                     -d training/conda_dependencies.yml --path training -c train_basic \
-                    -t $ROOTFOLDER/metadata/run.json $TRAININGSCRIPT $DATASTORENAME $CONTAINER $DATAFILENAME
+                    -t $ROOTFOLDER/metadata/run.json $TRAININGSCRIPT \
+                    --data_store $DATASTORENAME --data_container $CONTAINER --training_file $DATAFILENAME
                 
                 ls -la $ROOTFOLDER/metadata
             env:
