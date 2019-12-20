@@ -19,6 +19,7 @@ from azureml.pipeline.core import Pipeline
 from azureml.pipeline.steps import PythonScriptStep
 import azureml.dataprep as dprep
 
+from sklearn import metrics
 from joblib import dump
 
 workspace_name = 'cdmlops'
@@ -106,13 +107,14 @@ automl_settings = {
     "iteration_timeout_minutes": 15,
     "iterations": 25,
     "n_cross_validations": 5,
-    "primary_metric": 'spearman_correlation',  # 'r2_score'
+    "primary_metric": 'average_precision_score_weighted', # regression metrics: 'spearman_correlation',  # 'r2_score'
     "preprocess": False,
+    "num_classes": 2,
     "max_concurrent_iterations": 8,
     "verbosity": logging.INFO
 }
 
-automl_config = AutoMLConfig(task='regression',
+automl_config = AutoMLConfig(task='classification', # regression
                              debug_log = 'auto_ml_errors.log',
                              compute_target=aml_compute,
                              path=os.path.realpath(scripts_folder),
@@ -121,7 +123,7 @@ automl_config = AutoMLConfig(task='regression',
                             )
 
 train_step = AutoMLStep(
-    name='AutoML_Regression',
+    name='AutoML_Classification',
     automl_config=automl_config,
     inputs=[output_split_train_x, output_split_train_y],
     allow_reuse=True)
@@ -177,18 +179,23 @@ rundata
 print("Get the test data")
 split_step = pipeline_run.find_step_run(train_test_split_step.name)[0]
 
-x_train = fetch_df(split_step, output_split_train_x.name).to_pandas_dataframe()
-y_train = fetch_df(split_step, output_split_train_y.name).to_pandas_dataframe()
+# x_train = fetch_df(split_step, output_split_train_x.name).to_pandas_dataframe()
+# y_train = fetch_df(split_step, output_split_train_y.name).to_pandas_dataframe()
 
 x_test = fetch_df(split_step, output_split_test_x.name).to_pandas_dataframe()
 y_test = fetch_df(split_step, output_split_test_y.name).to_pandas_dataframe()
 
 print("Test the model")
+x_test
 y_predict = fitted_model.predict(x_test.values)
 y_actual = y_test.iloc[:,0].values.tolist()
 
 print("Prediction results:")
-prediction_results = pd.DataFrame({'Actual':y_actual, 'Predicted':y_predict}).head(5)
+prediction_results = pd.DataFrame({'Actual':y_actual, 'Predicted':y_predict}).head(10)
 prediction_results
+
+print("Confusion Matrix:")
+confusion_matrix = metrics.confusion_matrix(y_test, y_predict)
+print(confusion_matrix)
 
 print("Model pkl file is model.pkl in %s" % os.getcwd())
