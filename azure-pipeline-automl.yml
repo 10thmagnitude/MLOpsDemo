@@ -131,7 +131,7 @@ stages:
               azureSubscription: $(AzureSubscription)
               scriptType: bash
               scriptLocation: inlineScript
-              workingDirectory: deployment
+              workingDirectory: automl
               inlineScript: |
                 # create folders for artifacts
                 echo "Running python autoML script"
