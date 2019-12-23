@@ -134,8 +134,10 @@ stages:
               workingDirectory: automl
               inlineScript: |
                 echo "Pip install required packages"
-                pip install -r requirements.txt
-                
+                pip install --upgrade pandas
+                pip install --upgrade sklearn
+                pip install --upgrade azureml-sdk[automl]
+
                 echo "Running python autoML script"
                 SUBID=$(az account show --query id -o tsv)
 
