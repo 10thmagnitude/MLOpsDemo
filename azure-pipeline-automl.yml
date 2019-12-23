@@ -9,6 +9,12 @@ trigger:
     exclude:
     - automl/docker/*
 
+resources:
+  containers:
+  - container: mlops
+    image: build/mlops:1.0.5
+    endpoint: cdk8spu-reg
+
 variables:
   AzureSubscription: 10M Client Demo
   RGName: cd-mlops
@@ -90,6 +96,7 @@ stages:
     displayName: AutoML Modeling
     pool:
       vmImage: ubuntu-latest
+    container: mlops
     environment:
       Workspace
     strategy:
