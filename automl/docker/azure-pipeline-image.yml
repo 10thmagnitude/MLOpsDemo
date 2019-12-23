@@ -23,5 +23,5 @@ steps:
       containerRegistry: '$(containerRegistry)'
       repository: '$(imageName)'
       tags: '$(Build.BuildNumber)'
-      buildContext: '$(Build.SourcesDirectory)' 
-      dockerFile: '$(Build.SourcesDirectory)/environment_setup/Dockerfile'
+      buildContext: '$(Build.SourcesDirectory)/automl/docker' 
+      dockerFile: '$(Build.SourcesDirectory)/automl/docker/Dockerfile'
