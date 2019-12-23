@@ -135,7 +135,7 @@ automl_config = AutoMLConfig(task='classification', # regression
                              compute_target=aml_compute,
                              path=os.path.realpath(scripts_folder),
                              data_script='get_data.py',
-                             **automl_settings,
+                             **automl_settings
                             )
 
 train_step = AutoMLStep(
