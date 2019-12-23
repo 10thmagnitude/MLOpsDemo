@@ -1,19 +1,17 @@
 name: 1.0$(Rev:.r)
   
-resources:
-- repo: self
-
-queue:
-  name: Hosted Ubuntu 1604
 
 trigger:
   paths:
     include:
     - automl/docker/*
 
+pool:
+  vmImage: ubuntu-latest
+
 variables:
   containerRegistry: $[coalesce(variables['acrServiceConnection'], 'cdmlops80669ea3')]
-  imageName: $[coalesce(variables['agentImageName'], 'build/mlops')]  
+  imageName: $[coalesce(variables['buildImageName'], 'build/mlops')]  
 
 steps:
   - task: Docker@2

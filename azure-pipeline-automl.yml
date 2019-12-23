@@ -6,6 +6,8 @@ trigger:
     - automl/*
     - data/*
     - azure-pipeline-automl.yml
+    exclude:
+    - automl/docker/*
 
 variables:
   AzureSubscription: 10M Client Demo
