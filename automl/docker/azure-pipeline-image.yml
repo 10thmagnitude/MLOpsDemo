@@ -1,0 +1,27 @@
+name: 1.0$(Rev:.r)
+  
+resources:
+- repo: self
+
+queue:
+  name: Hosted Ubuntu 1604
+
+trigger:
+  paths:
+    include:
+    - automl/docker/*
+
+variables:
+  containerRegistry: $[coalesce(variables['acrServiceConnection'], 'cdmlops80669ea3')]
+  imageName: $[coalesce(variables['agentImageName'], 'build/mlops')]  
+
+steps:
+  - task: Docker@2
+    displayName: Build and Push
+    inputs:
+      command: buildAndPush
+      containerRegistry: '$(containerRegistry)'
+      repository: '$(imageName)'
+      tags: '$(Build.BuildNumber)'
+      buildContext: '$(Build.SourcesDirectory)' 
+      dockerFile: '$(Build.SourcesDirectory)/environment_setup/Dockerfile'
