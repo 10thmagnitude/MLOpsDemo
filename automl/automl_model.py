@@ -21,7 +21,6 @@ from azureml.pipeline.steps import PythonScriptStep
 import azureml.dataprep as dprep
 
 from sklearn import metrics
-from joblib import dump
 
 # parse the args
 parser = argparse.ArgumentParser("automl_model")
@@ -30,6 +29,7 @@ parser.add_argument("--compute_target", type=str, help="name of compute target",
 parser.add_argument("--dataset", type=str, help="name of dataset", default='diabetesdata/diabetes_pima.csv')
 parser.add_argument("--subscription_id", type=str, help="subscription id", default='7cb97533-0a52-4037-a51e-8b8d707367ad')
 parser.add_argument("--resource_group", type=str, help="name of resource group", default='cd-mlops')
+parser.add_argument("--build_number", type=str, help="build number tag value", default='1.0.0')
 
 args = parser.parse_args()
 workspace_name = args.workspace
@@ -37,12 +37,14 @@ compute_target_name = args.compute_target
 dataset_name = args.dataset
 subscription_id = args.subscription_id
 resource_group = args.resource_group
+build_number = args.build_number
 
 # workspace_name = 'cdmlops'
 # compute_target_name = 'cdmlops'
 # dataset_name = 'diabetesdata/diabetes_pima.csv'
 # subscription_id = '7cb97533-0a52-4037-a51e-8b8d707367ad'
 # resource_group = 'cd-mlops'
+# build_number = '1.0.0'
 
 print("workspace_name: %s" % workspace_name)
 print("compute_target_name: %s" % compute_target_name)
@@ -65,7 +67,6 @@ blob_diabetes_data = DataReference(
     datastore=datastore,
     data_reference_name="diabetes_data",
     path_on_datastore="diabetesdata/diabetes_pima.csv")
-blob_diabetes_data.as_download()
 
 # Create a new runconfig object
 aml_run_config = RunConfiguration()
@@ -214,3 +215,6 @@ confusion_matrix = metrics.confusion_matrix(y_test, y_predict)
 print(confusion_matrix)
 
 print("Model pkl file is model.pkl in %s" % os.getcwd())
+
+# set the best_run.id variable for azure pipelines
+print("##vso[task.setvariable variable=bestRunId;]{}".format(best_run.id.replace("'", '')))

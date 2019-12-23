@@ -4,6 +4,7 @@ trigger:
   paths:
     include:
     - webapp/*
+    - data/*
     - azure-pipeline-webapp.yml
 
 variables:
