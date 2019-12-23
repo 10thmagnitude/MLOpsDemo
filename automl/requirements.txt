@@ -1,0 +1,4 @@
+azureml>=0.2
+azureml-sdk>=1.0
+azure-cli==2.0.71
+pandas==0.25.3
