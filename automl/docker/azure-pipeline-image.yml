@@ -9,7 +9,7 @@ pool:
   vmImage: ubuntu-latest
 
 variables:
-  containerRegistry: $[coalesce(variables['acrServiceConnection'], 'cdmlops80669ea3')]
+  containerRegistry: $[coalesce(variables['acrServiceConnection'], 'cdk8spu-reg')]
   imageName: $[coalesce(variables['buildImageName'], 'build/mlops')]  
 
 steps:
