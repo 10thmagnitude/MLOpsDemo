@@ -9,7 +9,10 @@ parser = argparse.ArgumentParser("prep_data")
 parser.add_argument("--input_file", type=str, help="input raw data file")
 parser.add_argument("--output_path", type=str, help="output prepped data path")
 
-args, unknown = parser.parse_args()
+args, unknown = parser.parse_known_args()
+if (unknown):
+  print("Unknown args:")
+  print(unknown)
 
 print("Argument 1 (input training data file): %s" % args.input_file)
 print("Argument 2 (output prepped training data path) %s" % args.output_path)
