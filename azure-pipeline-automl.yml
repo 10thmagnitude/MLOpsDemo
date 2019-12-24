@@ -12,7 +12,7 @@ trigger:
 resources:
   containers:
   - container: mlops
-    image: build/mlops:1.0.8
+    image: build/mlops:latest
     endpoint: cdk8spu-reg
 
 variables:
