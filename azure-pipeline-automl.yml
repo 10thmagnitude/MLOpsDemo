@@ -41,21 +41,23 @@ stages:
     displayName: Provision ML Workspace
     pool:
       vmImage: ubuntu-latest
+    container: mlops
     environment:
       Workspace
     strategy:
       runOnce:
         deploy:
           steps:
-          - task: AzureCLI@2
-            displayName: Install az ml extension
-            inputs:
-              azureSubscription: $(AzureSubscription)
-              scriptType: bash
-              scriptLocation: inlineScript
-              inlineScript: |
-                echo "Installing ml extension for az"
-                az extension add --name azure-cli-ml
+          # - task: AzureCLI@2
+          #   displayName: Install az ml extension
+          #   inputs:
+          #     azureSubscription: $(AzureSubscription)
+          #     scriptType: bash
+          #     scriptLocation: inlineScript
+          #     inlineScript: |
+          #       echo "Installing ml extension for az"
+          #       az extension add --name azure-cli-ml
+          - script: az ml --help
 
           - task: AzureCLI@2
             displayName: Provision RG and ML Workspace
@@ -105,15 +107,16 @@ stages:
           steps:
           - checkout: self   # get config files in repo
 
-          - task: AzureCLI@2
-            displayName: Install az ml extension
-            inputs:
-              azureSubscription: $(AzureSubscription)
-              scriptType: bash
-              scriptLocation: inlineScript
-              inlineScript: |
-                echo "Installing ml extension for az"
-                az extension add --name azure-cli-ml
+          # - task: AzureCLI@2
+          #   displayName: Install az ml extension
+          #   inputs:
+          #     azureSubscription: $(AzureSubscription)
+          #     scriptType: bash
+          #     scriptLocation: inlineScript
+          #     inlineScript: |
+          #       echo "Installing ml extension for az"
+          #       az extension add --name azure-cli-ml
+          - script: az ml --help
 
           - task: AzureCLI@2
             displayName: Upload training data
@@ -198,6 +201,7 @@ stages:
     displayName: Deploy AutoML Model
     pool:
       vmImage: ubuntu-latest
+    container: mlops
     environment:
       Workspace
     strategy:
@@ -209,15 +213,15 @@ stages:
 
           - checkout: self   # get config files in repo
 
-          - task: AzureCLI@2
-            displayName: Install az ml extension
-            inputs:
-              azureSubscription: $(AzureSubscription)
-              scriptType: bash
-              scriptLocation: inlineScript
-              inlineScript: |
-                echo "Installing ml extension for az"
-                az extension add --name azure-cli-ml
+          # - task: AzureCLI@2
+          #   displayName: Install az ml extension
+          #   inputs:
+          #     azureSubscription: $(AzureSubscription)
+          #     scriptType: bash
+          #     scriptLocation: inlineScript
+          #     inlineScript: |
+          #       echo "Installing ml extension for az"
+          #       az extension add --name azure-cli-ml
 
           - task: AzureCLI@2
             displayName: Deploy Model to ACI
