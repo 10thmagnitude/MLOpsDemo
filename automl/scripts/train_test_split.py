@@ -22,7 +22,7 @@ parser.add_argument("--output_split_train_y", type=str, help="output split train
 parser.add_argument("--output_split_test_x", type=str, help="output split test features")
 parser.add_argument("--output_split_test_y", type=str, help="output split test labels")
 
-args = parser.parse_args()
+args, unknown = parser.parse_args()
 
 print("Argument 1 (input prepared data): %s" % args.input_prepared_data)
 print("Argument 2 (output training features split path): %s" % args.output_split_train_x)
