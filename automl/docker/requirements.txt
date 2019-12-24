@@ -1,6 +1,6 @@
 azureml==0.2.7
-azureml-sdk>=1.0.76
+azureml-sdk==1.0.76
 azure-cli==2.0.71
-pandas==0.25.3
+pandas==0.23.4
 scikit-learn==0.20.3
 azureml-train-automl==1.0.76
