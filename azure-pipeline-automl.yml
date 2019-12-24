@@ -48,15 +48,16 @@ stages:
       runOnce:
         deploy:
           steps:
-          # - task: AzureCLI@2
-          #   displayName: Install az ml extension
-          #   inputs:
-          #     azureSubscription: $(AzureSubscription)
-          #     scriptType: bash
-          #     scriptLocation: inlineScript
-          #     inlineScript: |
-          #       echo "Installing ml extension for az"
-          #       az extension add --name azure-cli-ml
+          - task: AzureCLI@2
+            displayName: Install az ml extension
+            inputs:
+              azureSubscription: $(AzureSubscription)
+              scriptType: bash
+              scriptLocation: inlineScript
+              inlineScript: |
+                echo "Installing ml extension for az"
+                az extension add --name azure-cli-ml
+          
           - script: az ml --help
 
           - task: AzureCLI@2
