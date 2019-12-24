@@ -48,24 +48,16 @@ stages:
       runOnce:
         deploy:
           steps:
-          - task: AzureCLI@2
-            displayName: Install az ml extension
-            inputs:
-              azureSubscription: $(AzureSubscription)
-              scriptType: bash
-              scriptLocation: inlineScript
-              inlineScript: |
-                echo "Installing ml extension for az"
-                az extension add --name azure-cli-ml
-                echo $AZURE_EXTENSION_DIR
-                az extension list
-                az ml -h
+          # - task: AzureCLI@2
+          #   displayName: Install az ml extension
+          #   inputs:
+          #     azureSubscription: $(AzureSubscription)
+          #     scriptType: bash
+          #     scriptLocation: inlineScript
+          #     inlineScript: |
+          #       echo "Installing ml extension for az"
+          #       az extension add --name azure-cli-ml
           
-          - script: |
-              echo $AZURE_EXTENSION_DIR
-              az extension list
-              az ml -h
-
           - task: AzureCLI@2
             displayName: Provision RG and ML Workspace
             inputs:
@@ -123,7 +115,6 @@ stages:
           #     inlineScript: |
           #       echo "Installing ml extension for az"
           #       az extension add --name azure-cli-ml
-          - script: az ml --help
 
           - task: AzureCLI@2
             displayName: Upload training data
