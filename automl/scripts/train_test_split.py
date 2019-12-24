@@ -39,9 +39,9 @@ feature_names = ['num_preg','glucose_conc','diastolic_bp','thickness','insulin',
 label_names = ['diabetes']
 
 print("Features:")
-feature_names
+print(feature_names)
 print("Labels:")
-label_names
+print(label_names)
 
 x_df = input_data.keep_columns(feature_names).to_pandas_dataframe()
 y_df = input_data.keep_columns(label_names).to_pandas_dataframe()

@@ -75,7 +75,7 @@ aml_run_config.environment.docker.enabled = True
 aml_run_config.environment.docker.base_image = "mcr.microsoft.com/azureml/base:intelmpi2018.3-ubuntu16.04"
 aml_run_config.environment.python.user_managed_dependencies = False
 aml_run_config.environment.python.conda_dependencies = CondaDependencies.create(
-    conda_packages=['pandas', 'scikit-learn'], 
+    conda_packages=['pandas', 'numpy', 'scikit-learn'], 
     pip_packages=['azureml-sdk', 'azureml-dataprep', 'azureml-dataprep[pandas]', 'azureml-train-automl'], 
     pin_sdk_version=False)
 
@@ -190,7 +190,8 @@ for run in children:
     metricslist[int(properties['iteration'])] = metrics
 
 rundata = pd.DataFrame(metricslist).sort_index(1)
-rundata
+print("Rundata:")
+print(rundata)
 
 print("Get the test data")
 split_step = pipeline_run.find_step_run(train_test_split_step.name)[0]
@@ -202,13 +203,13 @@ x_test = fetch_df(split_step, output_split_test_x.name).to_pandas_dataframe()
 y_test = fetch_df(split_step, output_split_test_y.name).to_pandas_dataframe()
 
 print("Test the model")
-x_test
+print(x_test)
 y_predict = fitted_model.predict(x_test.values)
 y_actual = y_test.iloc[:,0].values.tolist()
 
 print("Prediction results:")
 prediction_results = pd.DataFrame({'Actual':y_actual, 'Predicted':y_predict}).head(10)
-prediction_results
+print(prediction_results)
 
 print("Confusion Matrix:")
 confusion_matrix = metrics.confusion_matrix(y_test, y_predict)
