@@ -58,7 +58,9 @@ stages:
                 echo "Installing ml extension for az"
                 az extension add --name azure-cli-ml
           
-          - script: az ml --help
+          - script: |
+              which az
+              az ml --help
 
           - task: AzureCLI@2
             displayName: Provision RG and ML Workspace
