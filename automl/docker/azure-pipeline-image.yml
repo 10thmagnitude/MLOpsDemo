@@ -19,6 +19,8 @@ steps:
       command: buildAndPush
       containerRegistry: '$(containerRegistry)'
       repository: '$(imageName)'
-      tags: '$(Build.BuildNumber)'
       buildContext: '$(Build.SourcesDirectory)/automl/docker' 
       dockerFile: '$(Build.SourcesDirectory)/automl/docker/Dockerfile'
+      tags: |
+        $(Build.BuildNumber)
+        latest
