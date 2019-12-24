@@ -56,11 +56,18 @@ stages:
               scriptLocation: inlineScript
               inlineScript: |
                 echo "Installing ml extension for az"
+                pwd
+                whoami
                 az extension add --name azure-cli-ml
+                az extension list
+                az ml -h
           
           - script: |
+              pwd
+              whoami
               which az
-              az ml --help
+              az extension list
+              az ml -h
 
           - task: AzureCLI@2
             displayName: Provision RG and ML Workspace
