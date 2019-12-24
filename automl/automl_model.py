@@ -77,7 +77,7 @@ aml_run_config.environment.python.user_managed_dependencies = False
 aml_run_config.environment.python.conda_dependencies = CondaDependencies.create(
     python_version="3.6.9",
     conda_packages=['pandas', 'scikit-learn'], 
-    pip_packages=['azureml-sdk', 'azureml-dataprep', 'azureml-dataprep[pandas]', 'azureml-train-automl', 'numpy==1.17.4'], 
+    pip_packages=['azureml-sdk', 'azureml-dataprep', 'azureml-dataprep[pandas]', 'azureml-train-automl', 'numpy==1.18.0'], 
     pin_sdk_version=False)
 
 scripts_folder = './scripts'
