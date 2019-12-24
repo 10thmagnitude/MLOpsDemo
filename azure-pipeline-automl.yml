@@ -56,16 +56,13 @@ stages:
               scriptLocation: inlineScript
               inlineScript: |
                 echo "Installing ml extension for az"
-                pwd
-                whoami
                 az extension add --name azure-cli-ml
+                echo $AZURE_EXTENSION_DIR
                 az extension list
                 az ml -h
           
           - script: |
-              pwd
-              whoami
-              which az
+              echo $AZURE_EXTENSION_DIR
               az extension list
               az ml -h
 
