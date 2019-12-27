@@ -150,15 +150,13 @@ stages:
                 SUBID=$(az account show --query id -o tsv)
 
                 python automl_model.py --workspace $WORKSPACE --compute_target $CLUSTER \
-                  --dataset $CONTAINER/$DATAFILENAME --subscription_id $SUBID --resource_group $RG \
-                  --build_number $BUILDNUMBER
+                  --dataset $CONTAINER/$DATAFILENAME --subscription_id $SUBID --resource_group $RG
             env:
               RG: $(RGName)
               CLUSTER: $(ClusterName)
               WORKSPACE: $(WorkspaceName)
               CONTAINER: $(ContainerName)
               DATAFILENAME: $(DataFileName)
-              BUILDNUMBER: $(Build.BuildNumber)
 
           - task: AzureCLI@2
             displayName: Register model
