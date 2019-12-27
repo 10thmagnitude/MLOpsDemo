@@ -8,6 +8,7 @@ from azureml.core import Workspace, Dataset, Datastore
 from azureml.core.experiment import Experiment
 from azureml.core.compute import AmlCompute
 from azureml.core.runconfig import RunConfiguration
+from azureml.core.runconfig import DEFAULT_CPU_IMAGE
 from azureml.core.conda_dependencies import CondaDependencies
 
 from azureml.train.automl import AutoMLConfig
@@ -72,7 +73,7 @@ blob_diabetes_data = DataReference(
 aml_run_config = RunConfiguration()
 aml_run_config.target = aml_compute
 aml_run_config.environment.docker.enabled = True
-aml_run_config.environment.docker.base_image = "mcr.microsoft.com/azureml/base:intelmpi2018.3-ubuntu16.04"
+aml_run_config.environment.docker.base_image = DEFAULT_CPU_IMAGE  # "mcr.microsoft.com/azureml/base:intelmpi2018.3-ubuntu16.04"
 aml_run_config.environment.python.user_managed_dependencies = False
 aml_run_config.environment.python.conda_dependencies = CondaDependencies.create(
     conda_packages=['numpy', 'pandas', 'scikit-learn'], 
