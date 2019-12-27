@@ -30,7 +30,6 @@ parser.add_argument("--compute_target", type=str, help="name of compute target",
 parser.add_argument("--dataset", type=str, help="name of dataset", default='diabetesdata/diabetes_pima.csv')
 parser.add_argument("--subscription_id", type=str, help="subscription id", default='7cb97533-0a52-4037-a51e-8b8d707367ad')
 parser.add_argument("--resource_group", type=str, help="name of resource group", default='cd-mlops')
-parser.add_argument("--build_number", type=str, help="build number tag value", default='1.0.0')
 
 args = parser.parse_args()
 workspace_name = args.workspace
@@ -73,15 +72,12 @@ blob_diabetes_data = DataReference(
 aml_run_config = RunConfiguration()
 aml_run_config.target = aml_compute
 aml_run_config.environment.docker.enabled = True
-aml_run_config.environment.docker.base_image = DEFAULT_CPU_IMAGE  # "mcr.microsoft.com/azureml/base:intelmpi2018.3-ubuntu16.04"
+aml_run_config.environment.docker.base_image = DEFAULT_CPU_IMAGE
 aml_run_config.environment.python.user_managed_dependencies = False
 aml_run_config.environment.python.conda_dependencies = CondaDependencies.create(
-    # conda_packages=['numpy==1.18.0', 'pandas', 'scikit-learn'], 
-    # pip_packages=['azureml-sdk', 'azureml-core', 'azureml-dataprep', 'azureml-dataprep[pandas]', 'azureml-train-automl']
-    conda_packages=['pandas', 'scikit-learn','numpy==1.18.0'], 
-    pip_packages=['azureml-sdk', 'azureml-dataprep', 'azureml-train-automl'], 
-    pin_sdk_version=False
-)
+    conda_packages=['pandas', 'scikit-learn'], 
+    pip_packages=['azureml-sdk', 'azureml-dataprep', 'azureml-dataprep[pandas]', 'azureml-train-automl'], 
+    pin_sdk_version=False)
 
 scripts_folder = './scripts'
 prepared_data = PipelineData("diabetes_data_prep", datastore=datastore)
@@ -193,8 +189,8 @@ for run in children:
     metrics = {k: v for k, v in run.get_metrics().items() if isinstance(v, float)}
     metricslist[int(properties['iteration'])] = metrics
 
+print("Run Data:")
 rundata = pd.DataFrame(metricslist).sort_index(1)
-print("Rundata:")
 print(rundata)
 
 print("Get the test data")
@@ -207,12 +203,12 @@ x_test = fetch_df(split_step, output_split_test_x.name).to_pandas_dataframe()
 y_test = fetch_df(split_step, output_split_test_y.name).to_pandas_dataframe()
 
 print("Test the model")
-print(x_test)
+print(x_test.head(5))
 y_predict = fitted_model.predict(x_test.values)
 y_actual = y_test.iloc[:,0].values.tolist()
 
 print("Prediction results:")
-prediction_results = pd.DataFrame({'Actual':y_actual, 'Predicted':y_predict}).head(10)
+prediction_results = pd.DataFrame({'Actual':y_actual, 'Predicted':y_predict}).head(20)
 print(prediction_results)
 
 print("Confusion Matrix:")
