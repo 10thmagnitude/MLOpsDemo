@@ -37,14 +37,12 @@ compute_target_name = args.compute_target
 dataset_name = args.dataset
 subscription_id = args.subscription_id
 resource_group = args.resource_group
-build_number = args.build_number
 
 # workspace_name = 'cdmlops'
 # compute_target_name = 'cdmlops'
 # dataset_name = 'diabetesdata/diabetes_pima.csv'
 # subscription_id = '7cb97533-0a52-4037-a51e-8b8d707367ad'
 # resource_group = 'cd-mlops'
-# build_number = '1.0.0'
 
 print("workspace_name: %s" % workspace_name)
 print("compute_target_name: %s" % compute_target_name)
