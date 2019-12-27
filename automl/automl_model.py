@@ -76,8 +76,11 @@ aml_run_config.environment.docker.enabled = True
 aml_run_config.environment.docker.base_image = DEFAULT_CPU_IMAGE  # "mcr.microsoft.com/azureml/base:intelmpi2018.3-ubuntu16.04"
 aml_run_config.environment.python.user_managed_dependencies = False
 aml_run_config.environment.python.conda_dependencies = CondaDependencies.create(
-    conda_packages=['numpy==1.18.0', 'pandas', 'scikit-learn'], 
-    pip_packages=['azureml-sdk', 'azureml-core', 'azureml-dataprep', 'azureml-dataprep[pandas]', 'azureml-train-automl']
+    # conda_packages=['numpy==1.18.0', 'pandas', 'scikit-learn'], 
+    # pip_packages=['azureml-sdk', 'azureml-core', 'azureml-dataprep', 'azureml-dataprep[pandas]', 'azureml-train-automl']
+    conda_packages=['pandas', 'scikit-learn'], 
+    pip_packages=['azureml-sdk', 'azureml-dataprep', 'azureml-train-automl'], 
+    pin_sdk_version=False
 )
 
 scripts_folder = './scripts'
