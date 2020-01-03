@@ -73,7 +73,7 @@ aml_run_config.environment.docker.enabled = True
 aml_run_config.environment.docker.base_image = DEFAULT_CPU_IMAGE
 aml_run_config.environment.python.user_managed_dependencies = False
 aml_run_config.environment.python.conda_dependencies = CondaDependencies.create(
-    conda_packages=['pandas', 'scikit-learn'], 
+    conda_packages=['pandas', 'scikit-learn', 'numpy'], 
     pip_packages=['azureml-sdk', 'azureml-dataprep', 'azureml-dataprep[pandas]', 'azureml-train-automl'], 
     pin_sdk_version=False)
 
@@ -133,6 +133,7 @@ automl_config = AutoMLConfig(task='classification', # regression
                              compute_target=aml_compute,
                              path=os.path.realpath(scripts_folder),
                              data_script='get_data.py',
+                             
                              **automl_settings
                             )
 
