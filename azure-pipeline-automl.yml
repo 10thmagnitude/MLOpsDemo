@@ -136,7 +136,7 @@ stages:
               CONTAINER: $(ContainerName)
           
           - script: |
-              touch /usr/local/lib/python3.7/site-packages/dotnetcore2/bin/deps.lock
+              ls -la /usr/local/lib/python3.7/site-packages/dotnetcore2/bin
           
           - task: AzureCLI@2
             displayName: Train model
