@@ -182,15 +182,15 @@ print(fitted_model)
 
 print("Get metrics")
 children = list(automl_run.get_children())
-metricslist = {}
+metrics_list = {}
 for run in children:
     properties = run.get_properties()
-    metrics = {k: v for k, v in run.get_metrics().items() if isinstance(v, float)}
-    metricslist[int(properties['iteration'])] = metrics
+    run_metrics = {k: v for k, v in run.get_metrics().items() if isinstance(v, float)}
+    metrics_list[int(properties['iteration'])] = run_metrics
 
 print("Run Data:")
-rundata = pd.DataFrame(metricslist).sort_index(1)
-print(rundata)
+run_data = pd.DataFrame(metrics_list).sort_index(1)
+print(run_data)
 
 print("Get the test data")
 split_step = pipeline_run.find_step_run(train_test_split_step.name)[0]
