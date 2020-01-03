@@ -146,6 +146,9 @@ stages:
                 echo "Current dir is:"
                 pwd
 
+                echo "whoami:"
+                whoami
+
                 echo "Running python autoML script"
                 SUBID=$(az account show --query id -o tsv)
 
