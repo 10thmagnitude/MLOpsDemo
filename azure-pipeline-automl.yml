@@ -135,6 +135,9 @@ stages:
               WORKSPACE: $(WorkspaceName)
               CONTAINER: $(ContainerName)
           
+          - script: |
+              touch /usr/local/lib/python3.7/site-packages/dotnetcore2/bin/deps.lock
+          
           - task: AzureCLI@2
             displayName: Train model
             inputs:
@@ -144,11 +147,7 @@ stages:
               workingDirectory: automl
               inlineScript: |
                 echo "Current dir is:"
-                pwd
-
-                echo "whoami:"
-                whoami
-
+                
                 echo "Running python autoML script"
                 SUBID=$(az account show --query id -o tsv)
 
