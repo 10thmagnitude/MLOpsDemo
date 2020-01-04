@@ -190,12 +190,12 @@ stages:
               MODELNAME: $(ModelName)
               EXPERIMENT: $(ExperimentName)
               BUILDNUMBER: $(Build.BuildNumber)
-              ROOTFOLDER: $(Pipeline.Workspace)/automl
+              ROOTFOLDER: $(Build.SourcesDirectory)/automl
 
           - task: PublishPipelineArtifact@1
             displayName: Publish Artifact
             inputs:
-              targetPath: $(Pipeline.Workspace)/automl/model.*
+              targetPath: $(Build.SourcesDirectory)/automl/model.*
               ArtifactName: model
 
 - stage: devDeployAutoMLModel
