@@ -135,7 +135,7 @@ stages:
               WORKSPACE: $(WorkspaceName)
               CONTAINER: $(ContainerName)
           
-         - task: AzureCLI@2
+          - task: AzureCLI@2
             displayName: Train model
             inputs:
               azureSubscription: $(AzureSubscription)
