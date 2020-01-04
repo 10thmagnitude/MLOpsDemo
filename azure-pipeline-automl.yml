@@ -193,6 +193,7 @@ stages:
               ROOTFOLDER: $(Build.SourcesDirectory)/automl
 
           - task: CopyFiles@2
+            displayName: Copy model files to staging directory
             inputs:
               targetFolder: $(Build.ArtifactStagingDirectory)
               contents: $(Build.SourcesDirectory)/automl/model.*
