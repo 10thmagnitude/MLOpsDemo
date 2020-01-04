@@ -192,10 +192,15 @@ stages:
               BUILDNUMBER: $(Build.BuildNumber)
               ROOTFOLDER: $(Build.SourcesDirectory)/automl
 
+          - task: CopyFiles@2
+            inputs:
+              targetFolder: $(Build.ArtifactStagingDirectory)
+              contents: $(Build.SourcesDirectory)/automl/model.*
+          
           - task: PublishPipelineArtifact@1
             displayName: Publish Artifact
             inputs:
-              targetPath: $(Build.SourcesDirectory)/automl/model.*
+              targetPath: $(Build.ArtifactStagingDirectory)
               ArtifactName: model
 
 - stage: devDeployAutoMLModel
