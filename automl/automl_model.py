@@ -217,4 +217,4 @@ print(confusion_matrix)
 print("Model pkl file is model.pkl in %s" % os.getcwd())
 
 # set the best_run.id variable for azure pipelines
-print("##vso[task.setvariable variable=bestRunId;]{}".format(best_run.id.replace("'", '')))
+print("##vso[task.setvariable variable=bestRunId;]{}".format(best_run.id))

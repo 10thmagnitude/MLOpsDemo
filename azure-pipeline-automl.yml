@@ -135,10 +135,7 @@ stages:
               WORKSPACE: $(WorkspaceName)
               CONTAINER: $(ContainerName)
           
-          - script: |
-              ls -la /usr/local/lib/python3.7/site-packages/dotnetcore2/bin
-          
-          - task: AzureCLI@2
+         - task: AzureCLI@2
             displayName: Train model
             inputs:
               azureSubscription: $(AzureSubscription)
@@ -167,7 +164,17 @@ stages:
               scriptType: bash
               scriptLocation: inlineScript
               inlineScript: |
-                echo "Registering model $MODELNAME"
+                echo "Registering model $MODELNAME for best run ID $BESTRUNID"
+
+                echo az ml model register -g $RG -w $WORKSPACE -n $MODELNAME --experiment-name $EXPERIMENT \
+                    --asset-path outputs/model.pkl --run-id $BESTRUNID \
+                    -d "AutoML model using diabetes dataset" \
+                    --model-framework ScikitLearn -t $ROOTFOLDER/model.json \
+                    --tag data=diabetes \
+                    --tag model=automl \
+                    --tag type=classifier \
+                    --tag build=$BUILDNUMBER
+
                 az ml model register -g $RG -w $WORKSPACE -n $MODELNAME --experiment-name $EXPERIMENT \
                     --asset-path outputs/model.pkl --run-id $BESTRUNID \
                     -d "AutoML model using diabetes dataset" \
@@ -181,7 +188,7 @@ stages:
               WORKSPACE: $(WorkspaceName)
               BESTRUNID: $(bestRunId)
               MODELNAME: $(ModelName)
-              EXPERIMENT: automl-diabetes
+              EXPERIMENT: $(ExperimentName)
               BUILDNUMBER: $(Build.BuildNumber)
               ROOTFOLDER: $(Pipeline.Workspace)/automl
 
