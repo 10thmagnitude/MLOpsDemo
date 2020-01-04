@@ -18,7 +18,7 @@ variables:
   ContainerName: diabetesdata
   DataFileName: diabetes_pima.csv
   TrainingScript: train_pima_model.py
-  ModelName: basicmodel
+  ModelName: diabetesmodel
   ServiceName: diabetes-aci
   VMSize: Standard_DS2_V2
   MinNodes: 0

@@ -18,7 +18,7 @@ def init():
     global model
 
     print ("model initialized at " + time.strftime("%H:%M:%S"))
-    model_path = Model.get_model_path(model_name = 'basicmodel')
+    model_path = Model.get_model_path(model_name = 'diabetesmodel')
     model = load(model_path)
 
 input_sample = pd.DataFrame(data=[{
