@@ -197,6 +197,7 @@ stages:
             inputs:
               targetFolder: $(Build.ArtifactStagingDirectory)
               contents: $(Build.SourcesDirectory)/automl/model.*
+              flattenFolders: true
           
           - task: PublishPipelineArtifact@1
             displayName: Publish Artifact
