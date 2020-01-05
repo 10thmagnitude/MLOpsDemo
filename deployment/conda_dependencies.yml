@@ -12,13 +12,11 @@ dependencies:
 
 - pip:
   - azureml-defaults
-  - inference-schema[numpy-support]
-  - inference-schema[pandas-support]
+  - azureml-sdk[automl]
+  - inference-schema[numpy-support,pandas-support]
 - scikit-learn=0.21.2
 - joblib=0.13.2
 - numpy=1.16.4
 - pandas=0.24.2
 - matplotlib=3.0.2
 - seaborn=0.9.0
-- azureml-automl-core=1.0.81
-- azureml-train-automl=1.0.81
