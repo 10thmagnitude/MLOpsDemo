@@ -14,6 +14,9 @@ from inference_schema.schema_decorators import input_schema, output_schema
 from inference_schema.parameter_types.numpy_parameter_type import NumpyParameterType
 from inference_schema.parameter_types.pandas_parameter_type import PandasParameterType
 
+# for automl trained models
+import azureml.train.automl
+
 def init():
     global model
 
