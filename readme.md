@@ -23,3 +23,7 @@ Stage | Status
 ---|---
 Build Site|[![Build Status](https://10m.visualstudio.com/Demos/_apis/build/status/mlops/mlops.webapp?branchName=master&stageName=Build%20website)](https://10m.visualstudio.com/Demos/_build/latest?definitionId=81&branchName=master)
 Provision Infra and Deploy to DEV|[![Build Status](https://10m.visualstudio.com/Demos/_apis/build/status/mlops/mlops.webapp?branchName=master&stageName=Provision%20Infrastructure)](https://10m.visualstudio.com/Demos/_build/latest?definitionId=81&branchName=master)
+
+## URLs
+1. Scoring URL: Get this from the ML Portal under Endpoints.
+2. For the Swagger, change `/score` to `/swagger.json` in the URL to get the OpenAPI definition.
