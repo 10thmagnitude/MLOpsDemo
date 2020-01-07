@@ -212,6 +212,9 @@ stages:
                 
                 serviceUri=$(az ml service show -g $RG -w $WORKSPACE  -n $SERVICENAME --query scoringUri -o tsv)
                 swaggerUri=${serviceUri/\/score/\/swagger.json}
+
+                # get the key for the api: TODO - only in prod
+                #serviceKey=$(az ml service get-keys -n $SERVICENAME -g $RG -w $WORKSPACE --query primaryKey -o tsv)
                 
                 echo "ACI Service Uri is $serviceUri"
                 echo "ACI Service Swagger Uri is $swaggerUri"
@@ -242,9 +245,10 @@ stages:
           
           - task: PublishCodeCoverageResults@1
             displayName: Publish coverage results
-            summaryFileLocation: 'tests/results/cov/coverage.xml'
-            reportDirectory: 'tests/results/cov/'
-            failIfCoverageEmpty: true
+            inputs:
+              summaryFileLocation: 'tests/results/cov/coverage.xml'
+              reportDirectory: 'tests/results/cov/'
+              failIfCoverageEmpty: true
           
       
 
