@@ -230,6 +230,12 @@ stages:
                 echo "Deploying model to service $SERVICENAME"
                 az ml model deploy -g $RG -w $WORKSPACE -n $SERVICENAME -f $ARTIFACTFOLDER/metadata/model.json \
                   --dc aciDeploymentConfig.yml --ic inferenceConfig.yml --overwrite
+                
+                serviceUri=$(az ml service show -g $RG -w $WORKSPACE  -n $SERVICENAME --query scoringUri -o tsv)
+                swaggerUri=${serviceUri/\/score/\/swagger.json}
+                
+                echo "ACI Service Uri is $serviceUri"
+                echo "ACI Service Swagger Uri is $swaggerUri"
               workingDirectory: deployment
             env:
               ARTIFACTFOLDER: $(Pipeline.Workspace)/model
