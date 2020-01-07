@@ -8,6 +8,12 @@ trigger:
     - azure-pipeline-webapp.yml
     - azure-pipeline-automl.yml
 
+resources:
+  containers:
+  - container: mlops
+    image: build/mlops:latest
+    endpoint: cdk8spu-reg
+
 variables:
   AzureSubscription: 10M Client Demo
   RGName: cd-mlops
@@ -34,22 +40,13 @@ stages:
     displayName: Provision ML Workspace
     pool:
       vmImage: ubuntu-latest
+    container: mlops
     environment:
       Workspace
     strategy:
       runOnce:
         deploy:
           steps:
-          - task: AzureCLI@2
-            displayName: Install az ml extension
-            inputs:
-              azureSubscription: $(AzureSubscription)
-              scriptType: bash
-              scriptLocation: inlineScript
-              inlineScript: |
-                echo "Installing ml extension for az"
-                az extension add --name azure-cli-ml
-
           - task: AzureCLI@2
             displayName: Provision RG and ML Workspace
             inputs:
@@ -89,6 +86,7 @@ stages:
     displayName: Train Model
     pool:
       vmImage: ubuntu-latest
+    container: mlops
     environment:
       Workspace
     strategy:
@@ -96,16 +94,6 @@ stages:
         deploy:
           steps:
           - checkout: self   # get config files in repo
-
-          - task: AzureCLI@2
-            displayName: Install az ml extension
-            inputs:
-              azureSubscription: $(AzureSubscription)
-              scriptType: bash
-              scriptLocation: inlineScript
-              inlineScript: |
-                echo "Installing ml extension for az"
-                az extension add --name azure-cli-ml
 
           - task: AzureCLI@2
             displayName: Upload training data
@@ -199,6 +187,7 @@ stages:
     displayName: Deploy Model
     pool:
       vmImage: ubuntu-latest
+    container: mlops
     environment:
       Workspace
     strategy:
@@ -209,16 +198,6 @@ stages:
             artifact: model  # get model
 
           - checkout: self   # get config files in repo
-
-          - task: AzureCLI@2
-            displayName: Install az ml extension
-            inputs:
-              azureSubscription: $(AzureSubscription)
-              scriptType: bash
-              scriptLocation: inlineScript
-              inlineScript: |
-                echo "Installing ml extension for az"
-                az extension add --name azure-cli-ml
 
           - task: AzureCLI@2
             displayName: Deploy Model to ACI
@@ -236,6 +215,10 @@ stages:
                 
                 echo "ACI Service Uri is $serviceUri"
                 echo "ACI Service Swagger Uri is $swaggerUri"
+
+                # create variables to store the Uri's
+                echo "##vso[task.setvariable variable=ServiceUri;]$serviceUri"
+                echo "##vso[task.setvariable variable=SwaggerUri;]$swaggerUri"
               workingDirectory: deployment
             env:
               ARTIFACTFOLDER: $(Pipeline.Workspace)/model
@@ -244,7 +227,25 @@ stages:
               WORKSPACE: $(WorkspaceName)
               SERVICENAME: $(ServiceName)
           
-          #- task: # TODO: pytest to test API is running
+          - script: |
+              pytest test_api.py --doctest-modules --junitxml=results/test-results.xml --cov=test_api --cov-report=xml:results/cov/coverage.xml --cov-report=html:results/cov/htmlcov --score_url $serviceUri
+            workingDirectory: tests
+            displayName: Smoke test the API
+            continueOnError: true
+
+          - task: PublishTestResults@2
+            displayName: Publish test results
+            inputs:
+              testResultsFormat: JUnit
+              testResultsFiles: 'test/results/test-results.xml'
+              failTaskOnFailedTests: true
+          
+          - task: PublishCodeCoverageResults@1
+            displayName: Publish coverage results
+            summaryFileLocation: 'tests/results/cov/coverage.xml'
+            reportDirectory: 'tests/results/cov/'
+            failIfCoverageEmpty: true
+          
       
 
   
