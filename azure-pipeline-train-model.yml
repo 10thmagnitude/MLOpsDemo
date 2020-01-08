@@ -246,6 +246,7 @@ stages:
           - task: PublishCodeCoverageResults@1
             displayName: Publish coverage results
             inputs:
+              codeCoverageTool: Cobertura
               summaryFileLocation: '$(System.DefaultWorkingDirectory)/tests/results/cov/coverage.xml'
               reportDirectory: '$(System.DefaultWorkingDirectory)/tests/results/cov/'
               failIfCoverageEmpty: true

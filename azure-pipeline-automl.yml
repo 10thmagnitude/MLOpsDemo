@@ -221,6 +221,10 @@ stages:
                 
                 echo "ACI Service Uri is $serviceUri"
                 echo "ACI Service Swagger Uri is $swaggerUri"
+
+                # create variables to store the Uri's
+                echo "##vso[task.setvariable variable=ServiceUri;]$serviceUri"
+                echo "##vso[task.setvariable variable=SwaggerUri;]$swaggerUri"
               workingDirectory: deployment
             env:
               ARTIFACTFOLDER: $(Pipeline.Workspace)/model
