@@ -240,14 +240,14 @@ stages:
             displayName: Publish test results
             inputs:
               testResultsFormat: JUnit
-              testResultsFiles: 'test/results/test-results.xml'
+              testResultsFiles: '$(System.DefaultWorkingDirectory)/tests/results/test-results.xml'
               failTaskOnFailedTests: true
           
           - task: PublishCodeCoverageResults@1
             displayName: Publish coverage results
             inputs:
-              summaryFileLocation: 'tests/results/cov/coverage.xml'
-              reportDirectory: 'tests/results/cov/'
+              summaryFileLocation: '$(System.DefaultWorkingDirectory)/tests/results/cov/coverage.xml'
+              reportDirectory: '$(System.DefaultWorkingDirectory)/tests/results/cov/'
               failIfCoverageEmpty: true
           
       
