@@ -4,7 +4,7 @@ COPY requirements.txt /setup/
 
 ENV AZURE_EXTENSION_DIR=/azextensions
 	
-RUN apt-get update && apt-get install gcc jq curl -y && pip install --upgrade -r /setup/requirements.txt && \
+RUN apt-get update && apt-get install gcc jq curl libicu57 -y && pip install --upgrade -r /setup/requirements.txt && \
     mkdir -p $AZURE_EXTENSION_DIR && az extension add --name azure-cli-ml
 
 # install dotnet core
