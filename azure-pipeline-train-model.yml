@@ -231,7 +231,7 @@ stages:
               SERVICENAME: $(ServiceName)
           
           - script: |
-              pytest test_api.py --doctest-modules --junitxml=results/test-results.xml --cov=test_api --cov-report=xml:results/cov/coverage.xml --cov-report=html:results/cov/htmlcov --score_url $(ServiceUri)
+              pytest test_api.py --doctest-modules --junitxml=results/test-results.xml --cov=test_api --cov-report=xml:results/cov/coverage.xml --score_url $(ServiceUri)
             workingDirectory: tests
             displayName: Smoke test the API
             continueOnError: true
@@ -248,7 +248,6 @@ stages:
             inputs:
               codeCoverageTool: Cobertura
               summaryFileLocation: '$(System.DefaultWorkingDirectory)/tests/results/cov/coverage.xml'
-              reportDirectory: '$(System.DefaultWorkingDirectory)/tests/results/cov/'
               failIfCoverageEmpty: true
           
       
