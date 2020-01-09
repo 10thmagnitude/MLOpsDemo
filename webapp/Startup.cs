@@ -30,7 +30,7 @@ namespace webapp
                 c.BaseAddress = new Uri(Configuration["PredictionAPI:BaseURI"]);
                 // Add auth if it is present
                 var scoreKey = Configuration["PredictionAPI:ScoreKey"];
-                if (!string.IsNullOrEmpty(scoreKey))
+                if (!string.IsNullOrEmpty(scoreKey) || scoreKey.ToUpperCase() != "NONE")
                 {
                     c.DefaultRequestHeaders.Add("Authorization", $"Bearer {scoreKey}");
                 }
