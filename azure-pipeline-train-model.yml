@@ -26,6 +26,7 @@ variables:
   TrainingScript: train_pima_model.py
   ModelName: diabetesmodel
   ServiceName: diabetes-aci
+  ProdServiceName: diabetes-aks
   VMSize: Standard_DS2_V2
   AKSCluster: cd-mlcluster
   AKSNodeSize: Standard_B4ms
@@ -308,15 +309,15 @@ stages:
               scriptType: bash
               scriptLocation: inlineScript
               inlineScript: |
-                echo "Deploying model to service $SERVICENAME to AKS Cluster $AKSCLUSTER"
-                az ml model deploy -g $RG -w $WORKSPACE -n $SERVICENAME -f $ARTIFACTFOLDER/metadata/model.json \
+                echo "Deploying model to service $PRODSERVICENAME to AKS Cluster $AKSCLUSTER"
+                az ml model deploy -g $RG -w $WORKSPACE -n $PRODSERVICENAME -f $ARTIFACTFOLDER/metadata/model.json \
                   --dc aksDeploymentConfig.yml --ic inferenceConfig.yml --ct $AKSCLUSTER --overwrite
                 
-                serviceUri=$(az ml service show -g $RG -w $WORKSPACE  -n $SERVICENAME --query scoringUri -o tsv)
+                serviceUri=$(az ml service show -g $RG -w $WORKSPACE  -n $PRODSERVICENAME --query scoringUri -o tsv)
                 swaggerUri=${serviceUri/\/score/\/swagger.json}
 
                 # get the key for the api: TODO - only in prod
-                serviceKey=$(az ml service get-keys -n $SERVICENAME -g $RG -w $WORKSPACE --query primaryKey -o tsv)
+                serviceKey=$(az ml service get-keys -n $PRODSERVICENAME -g $RG -w $WORKSPACE --query primaryKey -o tsv)
                 
                 echo "Service Uri is $serviceUri"
                 echo "Service Swagger Uri is $swaggerUri"
@@ -332,7 +333,7 @@ stages:
               RG: $(RGName)
               LOCATION: $(Location)
               WORKSPACE: $(WorkspaceName)
-              SERVICENAME: diabetes-aks
+              PRODSERVICENAME: $(ProdServiceName)
               AKSCLUSTER: $(AKSCluster)
           
           - script: |
