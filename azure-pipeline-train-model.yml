@@ -285,12 +285,12 @@ stages:
               inlineScript: |
                 echo "Provisioning AKS Compute Cluster $AKSCLUSTER"
                 az ml computetarget create aks -g $RG -w $WORKSPACE -n $AKSCLUSTER -s $AKSNODESIZE -a $AKSNODECOUNT
-              env:
-                RG: $(RGName)
-                WORKSPACE: $(WorkspaceName)
-                AKSCLUSTER: $(AKSCluster)
-                AKSNODESIZE: $(AKSNodeSize)
-                AKSNODECOUNT: $(AKSNodeCount)
+            env:
+              RG: $(RGName)
+              WORKSPACE: $(WorkspaceName)
+              AKSCLUSTER: $(AKSCluster)
+              AKSNODESIZE: $(AKSNodeSize)
+              AKSNODECOUNT: $(AKSNodeCount)
 
           - task: AzureCLI@2
             displayName: Deploy Model to AKS
