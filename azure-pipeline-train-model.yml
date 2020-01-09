@@ -284,7 +284,16 @@ stages:
               scriptLocation: inlineScript
               inlineScript: |
                 echo "Provisioning AKS Compute Cluster $AKSCLUSTER"
-                az ml computetarget create aks -g $RG -w $WORKSPACE -n $AKSCLUSTER -s $AKSNODESIZE -a $AKSNODECOUNT
+
+                # check if the cluster has already been provisioned
+                exists=$(az ml computetarget list -g $RG -w $WORKSPACE --query "[].name" -o tsv | grep $AKSCLUSTER)
+
+                if [ -z "$exists" ]; then
+                  echo "Provisioning cluster..."
+                  az ml computetarget create aks -g $RG -w $WORKSPACE -n $AKSCLUSTER -s $AKSNODESIZE -a $AKSNODECOUNT
+                else
+                  echo "Cluster is already provisioned!"
+                fi
             env:
               RG: $(RGName)
               WORKSPACE: $(WorkspaceName)
