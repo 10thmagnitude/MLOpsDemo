@@ -222,6 +222,7 @@ stages:
                 # create variables to store the Uri's
                 echo "##vso[task.setvariable variable=ServiceUri;]$serviceUri"
                 echo "##vso[task.setvariable variable=SwaggerUri;]$swaggerUri"
+                #echo "##vso[task.setvariable variable=ServiceKey;]$serviceKey"
               workingDirectory: deployment
             env:
               ARTIFACTFOLDER: $(Pipeline.Workspace)/model

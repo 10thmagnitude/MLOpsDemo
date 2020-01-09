@@ -213,11 +213,14 @@ stages:
               scriptLocation: inlineScript
               inlineScript: |
                 echo "Deploying model to service $SERVICENAME"
-                az ml model deploy -g $RG -w $WORKSPACE -n $SERVICENAME -f $ARTIFACTFOLDER/model.json \
+                az ml model deploy -g $RG -w $WORKSPACE -n $SERVICENAME -f $ARTIFACTFOLDER/metadata/model.json \
                   --dc aciDeploymentConfig.yml --ic inferenceConfig.yml --overwrite
-
+                
                 serviceUri=$(az ml service show -g $RG -w $WORKSPACE  -n $SERVICENAME --query scoringUri -o tsv)
                 swaggerUri=${serviceUri/\/score/\/swagger.json}
+
+                # get the key for the api: TODO - only in prod
+                #serviceKey=$(az ml service get-keys -n $SERVICENAME -g $RG -w $WORKSPACE --query primaryKey -o tsv)
                 
                 echo "ACI Service Uri is $serviceUri"
                 echo "ACI Service Swagger Uri is $swaggerUri"
@@ -225,6 +228,7 @@ stages:
                 # create variables to store the Uri's
                 echo "##vso[task.setvariable variable=ServiceUri;]$serviceUri"
                 echo "##vso[task.setvariable variable=SwaggerUri;]$swaggerUri"
+                #echo "##vso[task.setvariable variable=ServiceKey;]$serviceKey"
               workingDirectory: deployment
             env:
               ARTIFACTFOLDER: $(Pipeline.Workspace)/model
@@ -232,3 +236,23 @@ stages:
               LOCATION: $(Location)
               WORKSPACE: $(WorkspaceName)
               SERVICENAME: $(ServiceName)
+          
+          - script: |
+              pytest test_api.py --doctest-modules --junitxml=results/test-results.xml --cov=test_api --cov-report=xml:results/cov/coverage.xml --score_url $(ServiceUri)
+            workingDirectory: tests
+            displayName: Smoke test the API
+            continueOnError: true
+
+          - task: PublishTestResults@2
+            displayName: Publish test results
+            inputs:
+              testResultsFormat: JUnit
+              testResultsFiles: '$(System.DefaultWorkingDirectory)/tests/results/test-results.xml'
+              failTaskOnFailedTests: true
+          
+          - task: PublishCodeCoverageResults@1
+            displayName: Publish coverage results
+            inputs:
+              codeCoverageTool: Cobertura
+              summaryFileLocation: '$(System.DefaultWorkingDirectory)/tests/results/cov/coverage.xml'
+              failIfCoverageEmpty: true
