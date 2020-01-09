@@ -249,6 +249,7 @@ stages:
               testResultsFormat: JUnit
               testResultsFiles: '$(System.DefaultWorkingDirectory)/tests/results/test-results.xml'
               failTaskOnFailedTests: true
+              testRunTitle: 'Dev Tests'
           
           - task: PublishCodeCoverageResults@1
             displayName: Publish coverage results
@@ -351,6 +352,7 @@ stages:
               testResultsFormat: JUnit
               testResultsFiles: '$(System.DefaultWorkingDirectory)/tests/results/test-results.xml'
               failTaskOnFailedTests: true
+              testRunTitle: 'Prod Tests'
           
           - task: PublishCodeCoverageResults@1
             displayName: Publish coverage results
