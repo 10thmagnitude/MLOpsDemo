@@ -27,6 +27,9 @@ variables:
   ModelName: diabetesmodel
   ServiceName: diabetes-aci
   VMSize: Standard_DS2_V2
+  AKSCluster: cd-mlcluster
+  AKSNodeSize: Standard_B4ms
+  AKSNodeCount: 3
   MinNodes: 0
   MaxNodes: 2
   IdleSecondsBeforeScaleDown: 300
@@ -189,7 +192,7 @@ stages:
       vmImage: ubuntu-latest
     container: mlops
     environment:
-      Workspace
+      MLOps-Dev
     strategy:
       runOnce:
         deploy:
@@ -232,10 +235,12 @@ stages:
               SERVICENAME: $(ServiceName)
           
           - script: |
-              pytest test_api.py --doctest-modules --junitxml=results/test-results.xml --cov=test_api --cov-report=xml:results/cov/coverage.xml --score_url $(ServiceUri)
+              pytest test_api.py --doctest-modules --junitxml=results/test-results.xml --cov=test_api --cov-report=xml:results/cov/coverage.xml --score_url $SERVICEURI
             workingDirectory: tests
             displayName: Smoke test the API
             continueOnError: true
+            env:
+              SERVICEURI: $(ServiceUri)
 
           - task: PublishTestResults@2
             displayName: Publish test results
@@ -251,6 +256,97 @@ stages:
               summaryFileLocation: '$(System.DefaultWorkingDirectory)/tests/results/cov/coverage.xml'
               failIfCoverageEmpty: true
           
-      
+- stage: prodDeployModel
+  dependsOn: devDeployModel
+  displayName: Deploy Model to PROD
+  jobs:
+  - deployment: deployModel
+    displayName: Deploy Model
+    pool:
+      vmImage: ubuntu-latest
+    container: mlops
+    environment:
+      MLOps-PROD
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - download: current
+            artifact: model  # get model
+
+          - checkout: self   # get config files in repo
+
+          - task: AzureCLI@2
+            displayName: Provision AKS Compute
+            inputs:
+              azureSubscription: $(AzureSubscription)
+              scriptType: bash
+              scriptLocation: inlineScript
+              inlineScript: |
+                echo "Provisioning AKS Compute Cluster $AKSCLUSTER"
+                az ml computetarget create aks -g $RG -w $WORKSPACE -n $AKSCLUSTER -s $AKSNODESIZE -a $AKSNODECOUNT
+              env:
+                RG: $(RGName)
+                WORKSPACE: $(WorkspaceName)
+                AKSCLUSTER: $(AKSCluster)
+                AKSNODESIZE: $(AKSNodeSize)
+                AKSNODECOUNT: $(AKSNodeCount)
+
+          - task: AzureCLI@2
+            displayName: Deploy Model to AKS
+            inputs:
+              azureSubscription: $(AzureSubscription)
+              scriptType: bash
+              scriptLocation: inlineScript
+              inlineScript: |
+                echo "Deploying model to service $SERVICENAME to AKS Cluster $AKSCLUSTER"
+                az ml model deploy -g $RG -w $WORKSPACE -n $SERVICENAME -f $ARTIFACTFOLDER/metadata/model.json \
+                  --dc aksDeploymentConfig.yml --ic inferenceConfig.yml --ct $AKSCLUSTER --overwrite
+                
+                serviceUri=$(az ml service show -g $RG -w $WORKSPACE  -n $SERVICENAME --query scoringUri -o tsv)
+                swaggerUri=${serviceUri/\/score/\/swagger.json}
+
+                # get the key for the api: TODO - only in prod
+                serviceKey=$(az ml service get-keys -n $SERVICENAME -g $RG -w $WORKSPACE --query primaryKey -o tsv)
+                
+                echo "Service Uri is $serviceUri"
+                echo "Service Swagger Uri is $swaggerUri"
+                echo "Creating service key"
+
+                # create variables to store the Uri's
+                echo "##vso[task.setvariable variable=ServiceUri;]$serviceUri"
+                echo "##vso[task.setvariable variable=SwaggerUri;]$swaggerUri"
+                echo "##vso[task.setvariable variable=ServiceKey;]$serviceKey"
+              workingDirectory: deployment
+            env:
+              ARTIFACTFOLDER: $(Pipeline.Workspace)/model
+              RG: $(RGName)
+              LOCATION: $(Location)
+              WORKSPACE: $(WorkspaceName)
+              SERVICENAME: diabetes-aks
+              AKSCLUSTER: $(AKSCluster)
+          
+          - script: |
+              pytest test_api.py --doctest-modules --junitxml=results/test-results.xml --cov=test_api --cov-report=xml:results/cov/coverage.xml --score_url $SERVICEURI --score_key $SERVICEKEY
+            workingDirectory: tests
+            displayName: Smoke test the API
+            continueOnError: true
+            env:
+              SERVICEURI: $(ServiceUri)
+              SERVICEKEY: $(ServiceKey)
+
+          - task: PublishTestResults@2
+            displayName: Publish test results
+            inputs:
+              testResultsFormat: JUnit
+              testResultsFiles: '$(System.DefaultWorkingDirectory)/tests/results/test-results.xml'
+              failTaskOnFailedTests: true
+          
+          - task: PublishCodeCoverageResults@1
+            displayName: Publish coverage results
+            inputs:
+              codeCoverageTool: Cobertura
+              summaryFileLocation: '$(System.DefaultWorkingDirectory)/tests/results/cov/coverage.xml'
+              failIfCoverageEmpty: true
 
   
