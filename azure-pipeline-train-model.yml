@@ -30,7 +30,7 @@ variables:
   VMSize: Standard_DS2_V2
   AKSCluster: cd-mlcluster
   AKSNodeSize: Standard_B4ms
-  AKSNodeCount: 3
+  AKSNodeCount: 2
   MinNodes: 0
   MaxNodes: 2
   IdleSecondsBeforeScaleDown: 300
@@ -292,7 +292,7 @@ stages:
 
                 if [ -z "$exists" ]; then
                   echo "Provisioning cluster..."
-                  az ml computetarget create aks -g $RG -w $WORKSPACE -n $AKSCLUSTER -s $AKSNODESIZE -a $AKSNODECOUNT
+                  az ml computetarget create aks -g $RG -w $WORKSPACE -n $AKSCLUSTER -s $AKSNODESIZE -a $AKSNODECOUNT --cluster-purpose DEVTEST
                 else
                   echo "Cluster is already provisioned!"
                 fi
