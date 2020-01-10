@@ -31,8 +31,8 @@ public class PredictionAPIClient : IPredictionAPIClient
         };
 
         var result = await Client.PostAsync("/score", 
-            new StringContent(JsonSerializer.Serialize(json), 
-                Encoding.UTF8, "application/json"));
+            new StringContent(JsonSerializer.Serialize(json), Encoding.UTF8, "application/json"));
+        
         if (result.IsSuccessStatusCode)
         {
             var jsonData = await result.Content.ReadAsStringAsync();
@@ -42,7 +42,8 @@ public class PredictionAPIClient : IPredictionAPIClient
         }
         else
         {
-            throw new ApplicationException("Error calling prediction API");
+            string content = await result.Content.ReadAsStringAsync().Result;
+            throw new ApplicationException($"Error calling prediction API: {content}");
         }
     }
 }
