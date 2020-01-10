@@ -1,0 +1,59 @@
+parameters:
+  Environment: ''
+  RunContainer: ''
+  AzureSubscription: ''
+  RGName: ''
+  Location: ''
+  WorkspaceName: ''
+  ClusterName: ''
+  MinNodes: 0
+  MaxNodes: 2
+  VMSize: ''
+  IdleSecondsBeforeScaleDown: 300
+  CreatedBy: ''
+
+stages:
+- stage: provisionWorkspace
+  displayName: Provision Workspace
+  jobs:
+  - deployment: provisionWorkspace
+    displayName: Provision ML Workspace
+    pool:
+      vmImage: ubuntu-latest
+    container: ${{ parameters.RunContainer }}
+    environment:
+      ${{ parameters.Environment }}
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - task: AzureCLI@2
+            displayName: Provision RG and ML Workspace
+            inputs:
+              azureSubscription: ${{ parameters.AzureSubscription }}
+              scriptType: bash
+              scriptLocation: inlineScript
+              inlineScript: |
+                # create resource group
+                echo "Creating resource group $RG in $LOCATION"
+                az group create --name $RG -l $LOCATION --tags createdBy=$CREATEDBY purpose=demo
+
+                # create an ML Workspace
+                echo "Creating ML workspace $WORKSPACE"
+                az ml workspace create -g $RG -w $WORKSPACE -l $LOCATION --exist-ok --yes
+
+                # create a compute target
+                echo "Creating compute target $CLUSTER"
+                az ml computetarget create amlcompute -g $RG -w $WORKSPACE -n $CLUSTER -s $VMSIZE \
+                    --min-nodes $MINNODES --max-nodes $MAXNODES \
+                    --idle-seconds-before-scaledown $IDLESECONDSBEFORESCALEDOWN --remote-login-port-public-access Disabled
+            env:
+              RG: ${{ parameters.RGName }}
+              LOCATION: ${{ parameters.Location }}
+              CREATEDBY: ${{ parameters.CreatedBy }}
+              WORKSPACE: ${{ parameters.WorkspaceName }}
+              CLUSTER: ${{ parameters.ClusterName }}
+              MINNODES: ${{ parameters.MinNodes }}
+              MAXNODES: ${{ parameters.MaxNodes }}
+              VMSIZE: ${{ parameters.VMSize }}
+              IDLESECONDSBEFORESCALEDOWN: ${{ parameters.IdleSecondsBeforeScaleDown }}

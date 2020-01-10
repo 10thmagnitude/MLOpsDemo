@@ -27,60 +27,29 @@ variables:
   ModelName: diabetesmodel
   ServiceName: diabetes-aci
   ProdServiceName: diabetes-aks
-  VMSize: Standard_DS2_V2
   AKSCluster: cd-mlcluster
   AKSNodeSize: Standard_B4ms
   AKSNodeCount: 2
-  MinNodes: 0
-  MaxNodes: 2
-  IdleSecondsBeforeScaleDown: 300
   CreatedBy: colin
 
 stages:
 - stage: provisionWorkspace
   displayName: Provision Workspace
   jobs:
-  - deployment: provisionWorkspace
-    displayName: Provision ML Workspace
-    pool:
-      vmImage: ubuntu-latest
-    container: mlops
-    environment:
-      Workspace
-    strategy:
-      runOnce:
-        deploy:
-          steps:
-          - task: AzureCLI@2
-            displayName: Provision RG and ML Workspace
-            inputs:
-              azureSubscription: $(AzureSubscription)
-              scriptType: bash
-              scriptLocation: inlineScript
-              inlineScript: |
-                # create resource group
-                echo "Creating resource group $RG in $LOCATION"
-                az group create --name $RG -l $LOCATION --tags createdBy=$CREATEDBY purpose=demo
-
-                # create an ML Workspace
-                echo "Creating ML workspace $WORKSPACE"
-                az ml workspace create -g $RG -w $WORKSPACE -l $LOCATION --exist-ok --yes
-
-                # create a compute target
-                echo "Creating compute target $CLUSTER"
-                az ml computetarget create amlcompute -g $RG -w $WORKSPACE -n $CLUSTER -s $VMSIZE \
-                    --min-nodes $MINNODES --max-nodes $MAXNODES \
-                    --idle-seconds-before-scaledown $IDLESECONDSBEFORESCALEDOWN --remote-login-port-public-access Disabled
-            env:
-              RG: $(RGName)
-              LOCATION: $(Location)
-              CREATEDBY: $(CreatedBy)
-              WORKSPACE: $(WorkspaceName)
-              CLUSTER: $(ClusterName)
-              MINNODES: $(MinNodes)
-              MAXNODES: $(MaxNodes)
-              VMSIZE: $(Standard_DS2_V2)
-              IDLESECONDSBEFORESCALEDOWN: $(IdleSecondsBeforeScaleDown)
+  - template: templates/job-provision-workspace.yml
+    parameters:
+      Environment: 'MLOps-Dev'
+      RunContainer: mlops
+      AzureSubscription: $(AzureSubscription)
+      RGName: $(RGName)
+      Location: $(Location)
+      WorkspaceName: $(WorkspaceName)
+      ClusterName: $(ClusterName)
+      MinNodes: 0
+      MaxNodes: 2
+      VMSize: Standard_DS2_V2
+      IdleSecondsBeforeScaleDown: 300
+      CreatedBy: $(CreatedBy)
 
 - stage: trainModel
   dependsOn: provisionWorkspace
