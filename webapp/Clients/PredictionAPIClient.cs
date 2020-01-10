@@ -42,7 +42,7 @@ public class PredictionAPIClient : IPredictionAPIClient
         }
         else
         {
-            string content = await result.Content.ReadAsStringAsync().Result;
+            string content = await result.Content.ReadAsStringAsync();
             throw new ApplicationException($"Error calling prediction API: {content}");
         }
     }
