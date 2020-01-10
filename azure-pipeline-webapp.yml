@@ -134,7 +134,7 @@ stages:
     pool:
       vmImage: ubuntu-latest
     environment:
-      MLOps-Dev
+      MLOps-PROD
     variables:
       EnvironmentName: PROD
       ServiceName: diabetes-aks
