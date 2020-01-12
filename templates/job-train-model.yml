@@ -38,11 +38,11 @@ jobs:
               # create a variable with the datastoreName for subsequent tasks
               echo "##vso[task.setvariable variable=DataStoreName;]$dataStoreName"
           env:
-            RG: ${{ parametes.RGName }}
-            LOCATION: ${{ parametes.Location }}
-            WORKSPACE: ${{ parametes.WorkspaceName }}
-            CONTAINER: ${{ parametes.ContainerName }}
-            DATAFOLDER: ${{ parametes.DataFolder }}
+            RG: ${{ parameters.RGName }}
+            LOCATION: ${{ parameters.Location }}
+            WORKSPACE: ${{ parameters.WorkspaceName }}
+            CONTAINER: ${{ parameters.ContainerName }}
+            DATAFOLDER: ${{ parameters.DataFolder }}
         
         # inject training steps
         - ${{ parameters.TrainSteps }}
