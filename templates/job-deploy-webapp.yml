@@ -44,10 +44,10 @@ jobs:
           env:
             RG: ${{ parameters.RGName }}
             LOCATION: ${{ parameters.Location }}
-            CREATEDBY: ${{ pamaters.CreatedBy }}
+            CREATEDBY: ${{ parameters.CreatedBy }}
             SKU: ${{ parameters.SKU }}
             APPNAME: $(FQAppName)
-            ENVNAME: ${{ pamaters.EnvironmentName }}
+            ENVNAME: ${{ parameters.EnvironmentName }}
     
         - task: AzureCLI@2
           displayName: Install az ml extension
