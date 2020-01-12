@@ -84,7 +84,7 @@ jobs:
 
               if [ "$ENVIRONMENTNAME" = "PROD" ]; then
                 echo "Creating service key secret variable"
-                serviceKey=$(az ml service get-keys -n $PRODSERVICENAME -g $RG -w $WORKSPACE --query primaryKey -o tsv)
+                serviceKey=$(az ml service get-keys -n $SERVICENAME -g $RG -w $WORKSPACE --query primaryKey -o tsv)
                 echo "##vso[task.setvariable variable=ServiceKey;issecret=true;]$serviceKey"
               fi
             workingDirectory: deployment
