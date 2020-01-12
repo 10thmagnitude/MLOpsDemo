@@ -1,0 +1,121 @@
+parameters:
+  AzureSubscription: ''
+  Environment: ''
+  EnvironmentName: ''
+  JobContainer: ''
+  RGName: ''
+  Location: ''
+  WorkspaceName: ''
+  ServiceName: ''
+  AKSClusterName: ''
+  AKSNodeSize: 'Standard_B4ms'
+  AKSNodeCount: 2
+
+jobs:
+- deployment: deployModel
+  displayName: Deploy Model
+  pool:
+    vmImage: ubuntu-latest
+  container: ${{ parameters.JobContainer }}
+  environment:
+    ${{ parameters.Environment }}
+  strategy:
+    runOnce:
+      deploy:
+        steps:
+        - download: current
+          artifact: model  # get model
+
+        - checkout: self   # get config files in repo
+
+        # only provision compute if this is prod
+        - ${{ if eq('PROD', parameters.EnvironmentName) }}:
+          - task: AzureCLI@2
+            displayName: Provision AKS Compute
+            inputs:
+              azureSubscription: $(AzureSubscription)
+              scriptType: bash
+              scriptLocation: inlineScript
+              inlineScript: |
+                echo "Provisioning AKS Compute Cluster $AKSCLUSTER"
+
+                # check if the cluster has already been provisioned
+                exists=$(az ml computetarget list -g $RG -w $WORKSPACE --query "[].name" -o tsv | grep $AKSCLUSTER)
+
+                if [ -z "$exists" ]; then
+                  echo "Provisioning cluster..."
+                  az ml computetarget create aks -g $RG -w $WORKSPACE -n $AKSCLUSTER -s $AKSNODESIZE -a $AKSNODECOUNT --cluster-purpose DEVTEST
+                else
+                  echo "Cluster is already provisioned!"
+                fi
+            env:
+              RG: ${{ parameters.RGName }}
+              WORKSPACE: ${{ parameters.WorkspaceName }}
+              AKSCLUSTER: ${{ parameters.AKSCluster }}
+              AKSNODESIZE: ${{ parameters.AKSNodeSize }}
+              AKSNODECOUNT: ${{ parameters.AKSNodeCount }}
+
+        - task: AzureCLI@2
+          displayName: Deploy Model to ACI
+          inputs:
+            azureSubscription: ${{ parameters.AzureSubscription }}
+            scriptType: bash
+            scriptLocation: inlineScript
+            inlineScript: |
+              if [ "$ENVIRONMENTNAME" = "PROD" ]; then
+                echo "Deploying model to service $PRODSERVICENAME to AKS Cluster $AKSCLUSTER"
+                az ml model deploy -g $RG -w $WORKSPACE -n $SERVICENAME -f $ARTIFACTFOLDER/metadata/model.json \
+                  --dc aksDeploymentConfig.yml --ic inferenceConfig.yml --ct $AKSCLUSTER --overwrite
+              else
+                echo "Deploying model to service $SERVICENAME to ACI"
+                az ml model deploy -g $RG -w $WORKSPACE -n $SERVICENAME -f $ARTIFACTFOLDER/metadata/model.json \
+                  --dc aciDeploymentConfig.yml --ic inferenceConfig.yml --overwrite
+              fi
+
+              serviceUri=$(az ml service show -g $RG -w $WORKSPACE  -n $SERVICENAME --query scoringUri -o tsv)
+              swaggerUri=${serviceUri/\/score/\/swagger.json}
+
+              echo "Service Uri is $serviceUri"
+              echo "Service Swagger Uri is $swaggerUri"
+
+              # create variables to store the Uri's
+              echo "##vso[task.setvariable variable=ServiceUri;]$serviceUri"
+              echo "##vso[task.setvariable variable=SwaggerUri;]$swaggerUri"
+
+              if [ "$ENVIRONMENTNAME" = "PROD" ]; then
+                echo "Creating service key secret variable"
+                serviceKey=$(az ml service get-keys -n $PRODSERVICENAME -g $RG -w $WORKSPACE --query primaryKey -o tsv)
+                echo "##vso[task.setvariable variable=ServiceKey;issecret=true;]$serviceKey"
+              fi
+            workingDirectory: deployment
+          env:
+            ARTIFACTFOLDER: $(Pipeline.Workspace)/model
+            RG: ${{ parameters.RGName }}
+            LOCATION: ${{ parameters.Location }}
+            WORKSPACE: ${{ parameters.WorkspaceName }}
+            SERVICENAME: ${{ parameters.ServiceName }}
+            ENVIRONMENTNAME: ${{ parameters.EnvironmentName }}
+            AKSCLUSTER: ${{ parameters.AKSClusterName }}
+        
+        - script: |
+            pytest test_api.py --doctest-modules --junitxml=results/test-results.xml --cov=test_api --cov-report=xml:results/cov/coverage.xml --score_url $SERVICEURI
+          workingDirectory: tests
+          displayName: Smoke test the API
+          continueOnError: true
+          env:
+            SERVICEURI: $(ServiceUri)
+
+        - task: PublishTestResults@2
+          displayName: Publish test results
+          inputs:
+            testResultsFormat: JUnit
+            testResultsFiles: '$(System.DefaultWorkingDirectory)/tests/results/test-results.xml'
+            failTaskOnFailedTests: true
+            testRunTitle: '${{ parameters.EnvironmentName }} Tests'
+        
+        - task: PublishCodeCoverageResults@1
+          displayName: Publish coverage results
+          inputs:
+            codeCoverageTool: Cobertura
+            summaryFileLocation: '$(System.DefaultWorkingDirectory)/tests/results/cov/coverage.xml'
+            failIfCoverageEmpty: true

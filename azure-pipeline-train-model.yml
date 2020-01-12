@@ -25,11 +25,6 @@ variables:
   DataFileName: diabetes_pima.csv
   TrainingScript: train_pima_model.py
   ModelName: diabetesmodel
-  ServiceName: diabetes-aci
-  ProdServiceName: diabetes-aks
-  AKSCluster: cd-mlcluster
-  AKSNodeSize: Standard_B4ms
-  AKSNodeCount: 2
   CreatedBy: colin
 
 stages:
@@ -55,279 +50,106 @@ stages:
   dependsOn: provisionWorkspace
   displayName: Train Model
   jobs:
-  - deployment: trainModel
-    displayName: Train Model
-    pool:
-      vmImage: ubuntu-latest
-    container: mlops
-    environment:
-      Workspace
-    strategy:
-      runOnce:
-        deploy:
-          steps:
-          - checkout: self   # get config files in repo
+  - template: templates/job-train-model.yml
+    parameters:
+      AzureSubscription: 10M Client Demo
+      JobContainer: mlops
+      Environment: Workspace
+      RGName: $(RGName)
+      Location: $(Location)
+      WorkspaceName: $(WorkspaceName)
+      ContainerName: $(ContainerName)
+      DataFolder: data
+      PublishPath: $(Pipeline.Workspace)/training
+      TrainSteps:
+      - task: AzureCLI@2
+        displayName: Train model
+        inputs:
+          azureSubscription: $(AzureSubscription)
+          scriptType: bash
+          scriptLocation: inlineScript
+          inlineScript: |
+            # create folders for artifacts
+            echo "Creating output folders $ROOTFOLDER/models and /metadata"
+            mkdir $ROOTFOLDER/models -p && mkdir $ROOTFOLDER/metadata -p
 
-          - task: AzureCLI@2
-            displayName: Upload training data
-            inputs:
-              azureSubscription: $(AzureSubscription)
-              scriptType: bash
-              scriptLocation: inlineScript
-              inlineScript: |
-                echo "Uploading training data"
-                dataStoreName=$(az ml datastore show-default -w $WORKSPACE -g $RG --query name -o tsv)
-                az ml datastore upload -w $WORKSPACE -g $RG -n $dataStoreName -p data -u $CONTAINER --overwrite true
-                
-                # create a variable with the datastoreName for subsequent tasks
-                echo "##vso[task.setvariable variable=DataStoreName;]$dataStoreName"
-            env:
-              RG: $(RGName)
-              LOCATION: $(Location)
-              WORKSPACE: $(WorkspaceName)
-              CONTAINER: $(ContainerName)
-          
-          - task: AzureCLI@2
-            displayName: Train model
-            inputs:
-              azureSubscription: $(AzureSubscription)
-              scriptType: bash
-              scriptLocation: inlineScript
-              inlineScript: |
-                # create folders for artifacts
-                echo "Creating output folders $ROOTFOLDER/models and /metadata"
-                mkdir $ROOTFOLDER/models -p && mkdir $ROOTFOLDER/metadata -p
+            # train model (basic)
+            rm -f metadata/run.json
+            echo "Training model using experiment $EXPERIMENT and script $TRAININGSCRIPT"
+            az ml run submit-script -g $RG -w $WORKSPACE -e $EXPERIMENT --ct $CLUSTER \
+                -d training/conda_dependencies.yml --path training -c train_basic \
+                -t $ROOTFOLDER/metadata/run.json $TRAININGSCRIPT \
+                --data_store $DATASTORENAME --data_container $CONTAINER --training_file $DATAFILENAME
+            
+            ls -la $ROOTFOLDER/metadata
+        env:
+          RG: $(RGName)
+          CLUSTER: $(ClusterName)
+          WORKSPACE: $(WorkspaceName)
+          CONTAINER: $(ContainerName)
+          EXPERIMENT: $(ExperimentName)
+          DATASTORENAME: $(DataStoreName)
+          TRAININGSCRIPT: $(TrainingScript)
+          DATAFILENAME: $(DataFileName)
+          ROOTFOLDER: $(Pipeline.Workspace)/training
 
-                # train model (basic)
-                rm -f metadata/run.json
-                echo "Training model using experiment $EXPERIMENT and script $TRAININGSCRIPT"
-                az ml run submit-script -g $RG -w $WORKSPACE -e $EXPERIMENT --ct $CLUSTER \
-                    -d training/conda_dependencies.yml --path training -c train_basic \
-                    -t $ROOTFOLDER/metadata/run.json $TRAININGSCRIPT \
-                    --data_store $DATASTORENAME --data_container $CONTAINER --training_file $DATAFILENAME
-                
-                ls -la $ROOTFOLDER/metadata
-            env:
-              RG: $(RGName)
-              CLUSTER: $(ClusterName)
-              WORKSPACE: $(WorkspaceName)
-              CONTAINER: $(ContainerName)
-              EXPERIMENT: $(ExperimentName)
-              DATASTORENAME: $(DataStoreName)
-              TRAININGSCRIPT: $(TrainingScript)
-              DATAFILENAME: $(DataFileName)
-              ROOTFOLDER: $(Pipeline.Workspace)/training
+      - task: AzureCLI@2
+        displayName: Register and download model
+        inputs:
+          azureSubscription: $(AzureSubscription)
+          scriptType: bash
+          scriptLocation: inlineScript
+          inlineScript: |
+            # register model
+            echo "Registering model $MODELNAME"
+            az ml model register -g $RG -w $WORKSPACE -n $MODELNAME -f $ROOTFOLDER/metadata/run.json \
+                --asset-path outputs/models/sklearn_diabetes_model.pkl \
+                -d "Basic Linear model using diabetes dataset" \
+                --model-framework ScikitLearn -t $ROOTFOLDER/metadata/model.json \
+                --tag data=diabetes \
+                --tag model=regression \
+                --tag type=basic \
+                --tag build=$BUILDNUMBER
 
-          - task: AzureCLI@2
-            displayName: Register and download model
-            inputs:
-              azureSubscription: $(AzureSubscription)
-              scriptType: bash
-              scriptLocation: inlineScript
-              inlineScript: |
-                # register model
-                echo "Registering model $MODELNAME"
-                az ml model register -g $RG -w $WORKSPACE -n $MODELNAME -f $ROOTFOLDER/metadata/run.json \
-                    --asset-path outputs/models/sklearn_diabetes_model.pkl \
-                    -d "Basic Linear model using diabetes dataset" \
-                    --model-framework ScikitLearn -t $ROOTFOLDER/metadata/model.json \
-                    --tag data=diabetes \
-                    --tag model=regression \
-                    --tag type=basic \
-                    --tag build=$BUILDNUMBER
-
-                # download model
-                modelId=$(jq -r .modelId $ROOTFOLDER/metadata/model.json)
-                az ml model download -g $RG -w $WORKSPACE -i $modelId -t $ROOTFOLDER/models --overwrite
-            env:
-              RG: $(RGName)
-              WORKSPACE: $(WorkspaceName)
-              MODELNAME: $(ModelName)
-              BUILDNUMBER: $(Build.BuildNumber)
-              ROOTFOLDER: $(Pipeline.Workspace)/training
-          
-          - task: PublishPipelineArtifact@1
-            displayName: Publish Artifact
-            inputs:
-              targetPath: $(Pipeline.Workspace)/training
-              ArtifactName: model
+            # download model
+            modelId=$(jq -r .modelId $ROOTFOLDER/metadata/model.json)
+            az ml model download -g $RG -w $WORKSPACE -i $modelId -t $ROOTFOLDER/models --overwrite
+        env:
+          RG: $(RGName)
+          WORKSPACE: $(WorkspaceName)
+          MODELNAME: $(ModelName)
+          BUILDNUMBER: $(Build.BuildNumber)
+          ROOTFOLDER: $(Pipeline.Workspace)/training
 
 - stage: devDeployModel
   dependsOn: trainModel
   displayName: Deploy Model to DEV
   jobs:
-  - deployment: deployModel
-    displayName: Deploy Model
-    pool:
-      vmImage: ubuntu-latest
-    container: mlops
-    environment:
-      MLOps-Dev
-    strategy:
-      runOnce:
-        deploy:
-          steps:
-          - download: current
-            artifact: model  # get model
-
-          - checkout: self   # get config files in repo
-
-          - task: AzureCLI@2
-            displayName: Deploy Model to ACI
-            inputs:
-              azureSubscription: $(AzureSubscription)
-              scriptType: bash
-              scriptLocation: inlineScript
-              inlineScript: |
-                echo "Deploying model to service $SERVICENAME"
-                az ml model deploy -g $RG -w $WORKSPACE -n $SERVICENAME -f $ARTIFACTFOLDER/metadata/model.json \
-                  --dc aciDeploymentConfig.yml --ic inferenceConfig.yml --overwrite
-                
-                serviceUri=$(az ml service show -g $RG -w $WORKSPACE  -n $SERVICENAME --query scoringUri -o tsv)
-                swaggerUri=${serviceUri/\/score/\/swagger.json}
-
-                # get the key for the api: TODO - only in prod
-                #serviceKey=$(az ml service get-keys -n $SERVICENAME -g $RG -w $WORKSPACE --query primaryKey -o tsv)
-                
-                echo "ACI Service Uri is $serviceUri"
-                echo "ACI Service Swagger Uri is $swaggerUri"
-
-                # create variables to store the Uri's
-                echo "##vso[task.setvariable variable=ServiceUri;]$serviceUri"
-                echo "##vso[task.setvariable variable=SwaggerUri;]$swaggerUri"
-                #echo "##vso[task.setvariable variable=ServiceKey;]$serviceKey"
-              workingDirectory: deployment
-            env:
-              ARTIFACTFOLDER: $(Pipeline.Workspace)/model
-              RG: $(RGName)
-              LOCATION: $(Location)
-              WORKSPACE: $(WorkspaceName)
-              SERVICENAME: $(ServiceName)
-          
-          - script: |
-              pytest test_api.py --doctest-modules --junitxml=results/test-results.xml --cov=test_api --cov-report=xml:results/cov/coverage.xml --score_url $SERVICEURI
-            workingDirectory: tests
-            displayName: Smoke test the API
-            continueOnError: true
-            env:
-              SERVICEURI: $(ServiceUri)
-
-          - task: PublishTestResults@2
-            displayName: Publish test results
-            inputs:
-              testResultsFormat: JUnit
-              testResultsFiles: '$(System.DefaultWorkingDirectory)/tests/results/test-results.xml'
-              failTaskOnFailedTests: true
-              testRunTitle: 'Dev Tests'
-          
-          - task: PublishCodeCoverageResults@1
-            displayName: Publish coverage results
-            inputs:
-              codeCoverageTool: Cobertura
-              summaryFileLocation: '$(System.DefaultWorkingDirectory)/tests/results/cov/coverage.xml'
-              failIfCoverageEmpty: true
+  - template: templates/job-deploy-model.yml
+    parameters:
+      AzureSubscription: $(AzureSubscription)
+      Environment: MLOps-Dev
+      EnvironmentName: DEV
+      JobContainer: mlops
+      RGName: $(RGName)
+      Location: $(Location)
+      WorkspaceName: $(WorkspaceName)
+      ServiceName: 'diabetes-aci'
           
 - stage: prodDeployModel
   dependsOn: devDeployModel
   displayName: Deploy Model to PROD
   jobs:
-  - deployment: deployModel
-    displayName: Deploy Model
-    pool:
-      vmImage: ubuntu-latest
-    container: mlops
-    environment:
-      MLOps-PROD
-    strategy:
-      runOnce:
-        deploy:
-          steps:
-          - download: current
-            artifact: model  # get model
-
-          - checkout: self   # get config files in repo
-
-          - task: AzureCLI@2
-            displayName: Provision AKS Compute
-            inputs:
-              azureSubscription: $(AzureSubscription)
-              scriptType: bash
-              scriptLocation: inlineScript
-              inlineScript: |
-                echo "Provisioning AKS Compute Cluster $AKSCLUSTER"
-
-                # check if the cluster has already been provisioned
-                exists=$(az ml computetarget list -g $RG -w $WORKSPACE --query "[].name" -o tsv | grep $AKSCLUSTER)
-
-                if [ -z "$exists" ]; then
-                  echo "Provisioning cluster..."
-                  az ml computetarget create aks -g $RG -w $WORKSPACE -n $AKSCLUSTER -s $AKSNODESIZE -a $AKSNODECOUNT --cluster-purpose DEVTEST
-                else
-                  echo "Cluster is already provisioned!"
-                fi
-            env:
-              RG: $(RGName)
-              WORKSPACE: $(WorkspaceName)
-              AKSCLUSTER: $(AKSCluster)
-              AKSNODESIZE: $(AKSNodeSize)
-              AKSNODECOUNT: $(AKSNodeCount)
-
-          - task: AzureCLI@2
-            displayName: Deploy Model to AKS
-            inputs:
-              azureSubscription: $(AzureSubscription)
-              scriptType: bash
-              scriptLocation: inlineScript
-              inlineScript: |
-                echo "Deploying model to service $PRODSERVICENAME to AKS Cluster $AKSCLUSTER"
-                az ml model deploy -g $RG -w $WORKSPACE -n $PRODSERVICENAME -f $ARTIFACTFOLDER/metadata/model.json \
-                  --dc aksDeploymentConfig.yml --ic inferenceConfig.yml --ct $AKSCLUSTER --overwrite
-                
-                serviceUri=$(az ml service show -g $RG -w $WORKSPACE  -n $PRODSERVICENAME --query scoringUri -o tsv)
-                swaggerUri=${serviceUri/\/score/\/swagger.json}
-
-                # get the key for the api: TODO - only in prod
-                serviceKey=$(az ml service get-keys -n $PRODSERVICENAME -g $RG -w $WORKSPACE --query primaryKey -o tsv)
-                
-                echo "Service Uri is $serviceUri"
-                echo "Service Swagger Uri is $swaggerUri"
-                echo "Creating service key"
-
-                # create variables to store the Uri's
-                echo "##vso[task.setvariable variable=ServiceUri;]$serviceUri"
-                echo "##vso[task.setvariable variable=SwaggerUri;]$swaggerUri"
-                echo "##vso[task.setvariable variable=ServiceKey;issecret=true;]$serviceKey"
-              workingDirectory: deployment
-            env:
-              ARTIFACTFOLDER: $(Pipeline.Workspace)/model
-              RG: $(RGName)
-              LOCATION: $(Location)
-              WORKSPACE: $(WorkspaceName)
-              PRODSERVICENAME: $(ProdServiceName)
-              AKSCLUSTER: $(AKSCluster)
-          
-          - script: |
-              pytest test_api.py --doctest-modules --junitxml=results/test-results.xml --cov=test_api --cov-report=xml:results/cov/coverage.xml --score_url $SERVICEURI --score_key $SERVICEKEY
-            workingDirectory: tests
-            displayName: Smoke test the API
-            continueOnError: true
-            env:
-              SERVICEURI: $(ServiceUri)
-              SERVICEKEY: $(ServiceKey)
-
-          - task: PublishTestResults@2
-            displayName: Publish test results
-            inputs:
-              testResultsFormat: JUnit
-              testResultsFiles: '$(System.DefaultWorkingDirectory)/tests/results/test-results.xml'
-              failTaskOnFailedTests: true
-              testRunTitle: 'Prod Tests'
-          
-          - task: PublishCodeCoverageResults@1
-            displayName: Publish coverage results
-            inputs:
-              codeCoverageTool: Cobertura
-              summaryFileLocation: '$(System.DefaultWorkingDirectory)/tests/results/cov/coverage.xml'
-              failIfCoverageEmpty: true
+    - template: templates/job-deploy-model.yml
+    parameters:
+      AzureSubscription: $(AzureSubscription)
+      Environment: MLOps-PROD
+      EnvironmentName: PROD
+      JobContainer: mlops
+      RGName: $(RGName)
+      Location: $(Location)
+      WorkspaceName: $(WorkspaceName)
+      ServiceName: 'diabetes-aks'
+      AKSClusterName: 'cd-mlcluster'
 
   

@@ -1,30 +1,23 @@
 patameters:
-  AzureSubscription: 10M Client Demo
-  RGName: cd-mlops
-  Location: westus2
-  WorkspaceName: cdmlops
-  ContainerName: diabetesdata
-  DataFileName: diabetes_pima.csv
-  TrainingScript: train_pima_model.py
+  AzureSubscription: ''
+  JobContainer: ''
+  Environment: ''
+  RGName: ''
+  Location: ''
+  WorkspaceName: ''
+  ContainerName: ''
+  DataFolder: ''
   PublishPath: ''
   TrainSteps: []
 
-#   ModelName: diabetesmodel
-#   ServiceName: diabetes-aci
-#   ProdServiceName: diabetes-aks
-#   AKSCluster: cd-mlcluster
-#   AKSNodeSize: Standard_B4ms
-#   AKSNodeCount: 2
-#   CreatedBy: colin
-
 jobs:
-- deployment: trainModel
+- deploy: trainModel
   displayName: Train Model
   pool:
     vmImage: ubuntu-latest
-  container: mlops
+  container: ${{ parameters.JobContainer }}
   environment:
-    Workspace
+    ${{ parameters.Environment }}
   strategy:
     runOnce:
       deploy:
@@ -40,21 +33,22 @@ jobs:
             inlineScript: |
               echo "Uploading training data"
               dataStoreName=$(az ml datastore show-default -w $WORKSPACE -g $RG --query name -o tsv)
-              az ml datastore upload -w $WORKSPACE -g $RG -n $dataStoreName -p data -u $CONTAINER --overwrite true
+              az ml datastore upload -w $WORKSPACE -g $RG -n $dataStoreName -p $DATAFOLDER -u $CONTAINER --overwrite true
               
               # create a variable with the datastoreName for subsequent tasks
               echo "##vso[task.setvariable variable=DataStoreName;]$dataStoreName"
           env:
-            RG: $(RGName)
-            LOCATION: $(Location)
-            WORKSPACE: $(WorkspaceName)
-            CONTAINER: $(ContainerName)
+            RG: ${{ parametes.RGName }}
+            LOCATION: ${{ parametes.Location }}
+            WORKSPACE: ${{ parametes.WorkspaceName }}
+            CONTAINER: ${{ parametes.ContainerName }}
+            DATAFOLDER: ${{ parametes.DataFolder }}
         
-        - ${{ for step in trainSteps }}:
-          - task: ${{ step}} 
+        # inject training steps
+        - ${{ parameters.TrainSteps }}
           
         - task: PublishPipelineArtifact@1
           displayName: Publish Artifact
           inputs:
-            targetPath: ${{ parameters.PublishPath }} # $(Pipeline.Workspace)/training
+            targetPath: ${{ parameters.PublishPath }}
             ArtifactName: model
