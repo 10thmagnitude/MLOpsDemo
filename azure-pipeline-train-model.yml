@@ -140,7 +140,7 @@ stages:
   dependsOn: devDeployModel
   displayName: Deploy Model to PROD
   jobs:
-    - template: templates/job-deploy-model.yml
+  - template: templates/job-deploy-model.yml
     parameters:
       AzureSubscription: $(AzureSubscription)
       Environment: MLOps-PROD
