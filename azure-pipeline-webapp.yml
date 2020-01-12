@@ -61,7 +61,7 @@ stages:
       AzureSubscription: $(AzureSubscription)
       CreatedBy: $(CreatedBy)
       Location: $(Location)
-      RG: $(RGName)
+      RGName: $(RGName)
       SKU: $(SKU)
       WebAppNamePrefix: $(WebAppNamePrefix)
           
@@ -78,7 +78,7 @@ stages:
       AzureSubscription: $(AzureSubscription)
       CreatedBy: $(CreatedBy)
       Location: $(Location)
-      RG: $(RGName)
+      RGName: $(RGName)
       SKU: $(SKU)
       WebAppNamePrefix: $(WebAppNamePrefix)
     
