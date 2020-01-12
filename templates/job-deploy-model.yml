@@ -56,7 +56,7 @@ jobs:
               AKSNODECOUNT: ${{ parameters.AKSNodeCount }}
 
         - task: AzureCLI@2
-          displayName: Deploy Model to ACI
+          displayName: Deploy Model to compute
           inputs:
             azureSubscription: ${{ parameters.AzureSubscription }}
             scriptType: bash
