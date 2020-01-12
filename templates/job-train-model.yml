@@ -1,4 +1,4 @@
-patameters:
+parameters:
   AzureSubscription: ''
   JobContainer: ''
   Environment: ''
@@ -11,7 +11,7 @@ patameters:
   TrainSteps: []
 
 jobs:
-- deploy: trainModel
+- deployment: trainModel
   displayName: Train Model
   pool:
     vmImage: ubuntu-latest
