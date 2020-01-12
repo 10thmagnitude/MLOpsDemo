@@ -51,7 +51,7 @@ jobs:
             env:
               RG: ${{ parameters.RGName }}
               WORKSPACE: ${{ parameters.WorkspaceName }}
-              AKSCLUSTER: ${{ parameters.AKSCluster }}
+              AKSCLUSTER: ${{ parameters.AKSClusterName }}
               AKSNODESIZE: ${{ parameters.AKSNodeSize }}
               AKSNODECOUNT: ${{ parameters.AKSNodeCount }}
 
@@ -63,7 +63,7 @@ jobs:
             scriptLocation: inlineScript
             inlineScript: |
               if [ "$ENVIRONMENTNAME" = "PROD" ]; then
-                echo "Deploying model to service $PRODSERVICENAME to AKS Cluster $AKSCLUSTER"
+                echo "Deploying model to service $SERVICENAME to AKS Cluster $AKSCLUSTER"
                 az ml model deploy -g $RG -w $WORKSPACE -n $SERVICENAME -f $ARTIFACTFOLDER/metadata/model.json \
                   --dc aksDeploymentConfig.yml --ic inferenceConfig.yml --ct $AKSCLUSTER --overwrite
               else
