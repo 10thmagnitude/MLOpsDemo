@@ -86,10 +86,10 @@ jobs:
                 
                 echo "Setting serviceKey variable"
                 echo "##vso[task.setvariable variable=PredictionAPI.ScoreKey;issecret=true;]$serviceKey"
-              env:
-                RG: $(RGName)
-                WORKSPACE: $(WorkspaceName)
-                SERVICENAME: $(ServiceName)
+            env:
+              RG: $(RGName)
+              WORKSPACE: $(WorkspaceName)
+              SERVICENAME: $(ServiceName)
     
         - task: AzureRmWebAppDeployment@4
           displayName: Deploy Web App
