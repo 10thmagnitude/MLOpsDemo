@@ -70,7 +70,7 @@ jobs:
               echo "Setting ServiceUri to $serviceUri"
               echo "##vso[task.setvariable variable=PredictionAPI.BaseURI;]$serviceUri"
           env:
-            RG: ${{ parameters.RG }}
+            RG: ${{ parameters.RGName }}
             WORKSPACE: ${{ parameters.WorkspaceName }}
             SERVICENAME: ${{ parameters.ServiceName }}
     
