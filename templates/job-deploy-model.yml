@@ -97,13 +97,24 @@ jobs:
             ENVIRONMENTNAME: ${{ parameters.EnvironmentName }}
             AKSCLUSTER: ${{ parameters.AKSClusterName }}
         
-        - script: |
-            pytest test_api.py --doctest-modules --junitxml=results/test-results.xml --cov=test_api --cov-report=xml:results/cov/coverage.xml --score_url $SERVICEURI
-          workingDirectory: tests
-          displayName: Smoke test the API
-          continueOnError: true
-          env:
-            SERVICEURI: $(ServiceUri)
+        - ${{ if ne('PROD', parameters.EnvironmentName) }}:
+          - script: |
+              pytest test_api.py --doctest-modules --junitxml=results/test-results.xml --cov=test_api --cov-report=xml:results/cov/coverage.xml --score_url $SERVICEURI
+            workingDirectory: tests
+            displayName: Smoke test the API
+            continueOnError: true
+            env:
+              SERVICEURI: $(ServiceUri)
+        
+        - ${{ if eq('PROD', parameters.EnvironmentName) }}:
+          - script: |
+              pytest test_api.py --doctest-modules --junitxml=results/test-results.xml --cov=test_api --cov-report=xml:results/cov/coverage.xml --score_url $SERVICEURI --score_key $SERVICEKEY
+            workingDirectory: tests
+            displayName: Smoke test the API
+            continueOnError: true
+            env:
+              SERVICEURI: $(ServiceUri)
+              SERVICEKEY: $(ServiceKey)
 
         - task: PublishTestResults@2
           displayName: Publish test results
