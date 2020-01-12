@@ -41,62 +41,62 @@ jobs:
 
               echo "Creating app service"
               az webapp create -n $APPNAME -p $APPNAME-plan -g $RG
-        env:
-          RG: ${{ parameters.RGName }}
-          LOCATION: ${{ parameters.Location }}
-          CREATEDBY: ${{ pamaters.CreatedBy }}
-          SKU: ${{ parameters.SKU }}
-          APPNAME: $(FQAppName)
-          ENVNAME: ${{ pamaters.EnvironmentName }}
+          env:
+            RG: ${{ parameters.RGName }}
+            LOCATION: ${{ parameters.Location }}
+            CREATEDBY: ${{ pamaters.CreatedBy }}
+            SKU: ${{ parameters.SKU }}
+            APPNAME: $(FQAppName)
+            ENVNAME: ${{ pamaters.EnvironmentName }}
     
-      - task: AzureCLI@2
-        displayName: Install az ml extension
-        inputs:
-          azureSubscription: ${{ parameters.AzureSubscription }}
-          scriptType: bash
-          scriptLocation: inlineScript
-          inlineScript: |
-            echo "Installing ml extension for az"
-            az extension add --name azure-cli-ml
-    
-      - task: AzureCLI@2
-        displayName: Get ML service URI
-        inputs:
-          azureSubscription: ${{ parameters.AzureSubscription }}
-          scriptType: bash
-          scriptLocation: inlineScript
-          inlineScript: |
-            serviceUri=$(az ml service show -g $RG -w $WORKSPACE  -n $SERVICENAME --query scoringUri -o tsv)
-            echo "Setting ServiceUri to $serviceUri"
-            echo "##vso[task.setvariable variable=PredictionAPI.BaseURI;]$serviceUri"
-        env:
-          RG: ${{ parameters.RG }}
-          WORKSPACE: ${{ parameters.WorkspaceName }}
-          SERVICENAME: ${{ parameters.ServiceName }}
-    
-      - ${{ if eq(parameters.EnvironmentName, 'PROD') }}:
         - task: AzureCLI@2
-          displayName: Get ML service key
+          displayName: Install az ml extension
           inputs:
             azureSubscription: ${{ parameters.AzureSubscription }}
             scriptType: bash
             scriptLocation: inlineScript
             inlineScript: |
-              serviceKey=$(az ml service get-keys -n $SERVICENAME -g $RG -w $WORKSPACE --query primaryKey -o tsv)
-              
-              echo "Setting serviceKey variable"
-              echo "##vso[task.setvariable variable=PredictionAPI.ScoreKey;issecret=true;]$serviceKey"
-            env:
-              RG: $(RGName)
-              WORKSPACE: $(WorkspaceName)
-              SERVICENAME: $(ServiceName)
+              echo "Installing ml extension for az"
+              az extension add --name azure-cli-ml
+      
+        - task: AzureCLI@2
+          displayName: Get ML service URI
+          inputs:
+            azureSubscription: ${{ parameters.AzureSubscription }}
+            scriptType: bash
+            scriptLocation: inlineScript
+            inlineScript: |
+              serviceUri=$(az ml service show -g $RG -w $WORKSPACE  -n $SERVICENAME --query scoringUri -o tsv)
+              echo "Setting ServiceUri to $serviceUri"
+              echo "##vso[task.setvariable variable=PredictionAPI.BaseURI;]$serviceUri"
+          env:
+            RG: ${{ parameters.RG }}
+            WORKSPACE: ${{ parameters.WorkspaceName }}
+            SERVICENAME: ${{ parameters.ServiceName }}
     
-      - task: AzureRmWebAppDeployment@4
-        displayName: Deploy Web App
-        inputs:
-          ConnectionType: AzureRM
-          azureSubscription: ${{ parameters.AzureSubscription }}
-          appType: webApp
-          WebAppName: $(FQAppName)
-          packageForLinux: '$(Pipeline.Workspace)/site/*.zip'
-          JSONFiles: 'appsettings.json'
+        - ${{ if eq(parameters.EnvironmentName, 'PROD') }}:
+          - task: AzureCLI@2
+            displayName: Get ML service key
+            inputs:
+              azureSubscription: ${{ parameters.AzureSubscription }}
+              scriptType: bash
+              scriptLocation: inlineScript
+              inlineScript: |
+                serviceKey=$(az ml service get-keys -n $SERVICENAME -g $RG -w $WORKSPACE --query primaryKey -o tsv)
+                
+                echo "Setting serviceKey variable"
+                echo "##vso[task.setvariable variable=PredictionAPI.ScoreKey;issecret=true;]$serviceKey"
+              env:
+                RG: $(RGName)
+                WORKSPACE: $(WorkspaceName)
+                SERVICENAME: $(ServiceName)
+    
+        - task: AzureRmWebAppDeployment@4
+          displayName: Deploy Web App
+          inputs:
+            ConnectionType: AzureRM
+            azureSubscription: ${{ parameters.AzureSubscription }}
+            appType: webApp
+            WebAppName: $(FQAppName)
+            packageForLinux: '$(Pipeline.Workspace)/site/*.zip'
+            JSONFiles: 'appsettings.json'
