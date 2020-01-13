@@ -29,7 +29,7 @@ variables:
   CreatedBy: colin
 
 stages:
-  - stage: provisionWorkspace
+- stage: provisionWorkspace
   displayName: Provision Workspace
   jobs:
   - template: templates/job-provision-workspace.yml
