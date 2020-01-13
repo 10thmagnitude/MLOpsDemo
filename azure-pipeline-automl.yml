@@ -61,7 +61,7 @@ stages:
       WorkspaceName: $(WorkspaceName)
       ContainerName: $(ContainerName)
       DataFolder: data
-      PublishPath: $(Pipeline.Workspace)/training
+      PublishPath: $(Build.ArtifactStagingDirectory)
       TrainSteps:
       - task: AzureCLI@2
         displayName: Train model
