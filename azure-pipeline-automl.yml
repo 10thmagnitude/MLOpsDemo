@@ -26,233 +26,116 @@ variables:
   DataFileName: diabetes_pima.csv
   TrainingScript: train_pima_model.py
   ModelName: diabetesmodel
-  ServiceName: diabetesautoml-aci
-  VMSize: Standard_DS2_V2
-  MinNodes: 0
-  MaxNodes: 2
-  IdleSecondsBeforeScaleDown: 300
   CreatedBy: colin
 
 stages:
-- stage: provisionWorkspace
+  - stage: provisionWorkspace
   displayName: Provision Workspace
   jobs:
-  - deployment: provisionWorkspace
-    displayName: Provision ML Workspace
-    pool:
-      vmImage: ubuntu-latest
-    container: mlops
-    environment:
-      Workspace
-    strategy:
-      runOnce:
-        deploy:
-          steps:
-          - task: AzureCLI@2
-            displayName: Provision RG and ML Workspace
-            inputs:
-              azureSubscription: $(AzureSubscription)
-              scriptType: bash
-              scriptLocation: inlineScript
-              inlineScript: |
-                # create resource group
-                echo "Creating resource group $RG in $LOCATION"
-                az group create --name $RG -l $LOCATION --tags createdBy=$CREATEDBY purpose=demo
-
-                # create an ML Workspace
-                echo "Creating ML workspace $WORKSPACE"
-                az ml workspace create -g $RG -w $WORKSPACE -l $LOCATION --exist-ok --yes
-
-                # create a compute target
-                echo "Creating compute target $CLUSTER"
-                az ml computetarget create amlcompute -g $RG -w $WORKSPACE -n $CLUSTER -s $VMSIZE \
-                    --min-nodes $MINNODES --max-nodes $MAXNODES \
-                    --idle-seconds-before-scaledown $IDLESECONDSBEFORESCALEDOWN --remote-login-port-public-access Disabled
-            env:
-              RG: $(RGName)
-              LOCATION: $(Location)
-              CREATEDBY: $(CreatedBy)
-              WORKSPACE: $(WorkspaceName)
-              CLUSTER: $(ClusterName)
-              MINNODES: $(MinNodes)
-              MAXNODES: $(MaxNodes)
-              VMSIZE: $(Standard_DS2_V2)
-              IDLESECONDSBEFORESCALEDOWN: $(IdleSecondsBeforeScaleDown)
+  - template: templates/job-provision-workspace.yml
+    parameters:
+      Environment: 'MLOps-Dev'
+      RunContainer: mlops
+      AzureSubscription: $(AzureSubscription)
+      RGName: $(RGName)
+      Location: $(Location)
+      WorkspaceName: $(WorkspaceName)
+      ClusterName: $(ClusterName)
+      MinNodes: 0
+      MaxNodes: 2
+      VMSize: Standard_DS2_V2
+      IdleSecondsBeforeScaleDown: 300
+      CreatedBy: $(CreatedBy)
 
 - stage: automl
   dependsOn: provisionWorkspace
   displayName: AutoML Training
   jobs:
-  - deployment: automl
-    displayName: AutoML Modeling
-    pool:
-      vmImage: ubuntu-latest
-    container: mlops
-    environment:
-      Workspace
-    strategy:
-      runOnce:
-        deploy:
-          steps:
-          - checkout: self   # get config files in repo
+  - template: templates/job-train-model.yml    
+    parameters:
+      AzureSubscription: 10M Client Demo
+      JobContainer: mlops
+      Environment: Workspace
+      RGName: $(RGName)
+      Location: $(Location)
+      WorkspaceName: $(WorkspaceName)
+      ContainerName: $(ContainerName)
+      DataFolder: data
+      PublishPath: $(Pipeline.Workspace)/training
+      TrainSteps:
+      - task: AzureCLI@2
+        displayName: Train model
+        inputs:
+          azureSubscription: $(AzureSubscription)
+          scriptType: bash
+          scriptLocation: inlineScript
+          workingDirectory: automl
+          inlineScript: |
+            echo "Running python autoML script"
+            SUBID=$(az account show --query id -o tsv)
 
-          - task: AzureCLI@2
-            displayName: Upload training data
-            inputs:
-              azureSubscription: $(AzureSubscription)
-              scriptType: bash
-              scriptLocation: inlineScript
-              inlineScript: |
-                echo "Uploading training data"
-                dataStoreName=$(az ml datastore show-default -w $WORKSPACE -g $RG --query name -o tsv)
-                az ml datastore upload -w $WORKSPACE -g $RG -n $dataStoreName -p data -u $CONTAINER --overwrite true
-                
-                # create a variable with the datastoreName for subsequent tasks
-                echo "##vso[task.setvariable variable=DataStoreName;]$dataStoreName"
-            env:
-              RG: $(RGName)
-              LOCATION: $(Location)
-              WORKSPACE: $(WorkspaceName)
-              CONTAINER: $(ContainerName)
-          
-          - task: AzureCLI@2
-            displayName: Train model
-            inputs:
-              azureSubscription: $(AzureSubscription)
-              scriptType: bash
-              scriptLocation: inlineScript
-              workingDirectory: automl
-              inlineScript: |
-                echo "Current dir is:"
-                
-                echo "Running python autoML script"
-                SUBID=$(az account show --query id -o tsv)
+            python automl_model.py --workspace $WORKSPACE --compute_target $CLUSTER \
+              --dataset $CONTAINER/$DATAFILENAME --subscription_id $SUBID --resource_group $RG
+        env:
+          RG: $(RGName)
+          CLUSTER: $(ClusterName)
+          WORKSPACE: $(WorkspaceName)
+          CONTAINER: $(ContainerName)
+          DATAFILENAME: $(DataFileName)
 
-                python automl_model.py --workspace $WORKSPACE --compute_target $CLUSTER \
-                  --dataset $CONTAINER/$DATAFILENAME --subscription_id $SUBID --resource_group $RG
-            env:
-              RG: $(RGName)
-              CLUSTER: $(ClusterName)
-              WORKSPACE: $(WorkspaceName)
-              CONTAINER: $(ContainerName)
-              DATAFILENAME: $(DataFileName)
+      - task: AzureCLI@2
+        displayName: Register model
+        inputs:
+          azureSubscription: $(AzureSubscription)
+          scriptType: bash
+          scriptLocation: inlineScript
+          inlineScript: |
+            echo "Registering model $MODELNAME for best run ID $BESTRUNID"
 
-          - task: AzureCLI@2
-            displayName: Register model
-            inputs:
-              azureSubscription: $(AzureSubscription)
-              scriptType: bash
-              scriptLocation: inlineScript
-              inlineScript: |
-                echo "Registering model $MODELNAME for best run ID $BESTRUNID"
+            echo az ml model register -g $RG -w $WORKSPACE -n $MODELNAME --experiment-name $EXPERIMENT \
+                --asset-path outputs/model.pkl --run-id $BESTRUNID \
+                -d "AutoML model using diabetes dataset" \
+                --model-framework ScikitLearn -t $ROOTFOLDER/model.json \
+                --tag data=diabetes \
+                --tag model=automl \
+                --tag type=classifier \
+                --tag build=$BUILDNUMBER
 
-                echo az ml model register -g $RG -w $WORKSPACE -n $MODELNAME --experiment-name $EXPERIMENT \
-                    --asset-path outputs/model.pkl --run-id $BESTRUNID \
-                    -d "AutoML model using diabetes dataset" \
-                    --model-framework ScikitLearn -t $ROOTFOLDER/model.json \
-                    --tag data=diabetes \
-                    --tag model=automl \
-                    --tag type=classifier \
-                    --tag build=$BUILDNUMBER
+            az ml model register -g $RG -w $WORKSPACE -n $MODELNAME --experiment-name $EXPERIMENT \
+                --asset-path outputs/model.pkl --run-id $BESTRUNID \
+                -d "AutoML model using diabetes dataset" \
+                --model-framework ScikitLearn -t $ROOTFOLDER/model.json \
+                --tag data=diabetes \
+                --tag model=automl \
+                --tag type=classifier \
+                --tag build=$BUILDNUMBER
+        env:
+          RG: $(RGName)
+          WORKSPACE: $(WorkspaceName)
+          BESTRUNID: $(bestRunId)
+          MODELNAME: $(ModelName)
+          EXPERIMENT: $(ExperimentName)
+          BUILDNUMBER: $(Build.BuildNumber)
+          ROOTFOLDER: $(Build.SourcesDirectory)/automl
 
-                az ml model register -g $RG -w $WORKSPACE -n $MODELNAME --experiment-name $EXPERIMENT \
-                    --asset-path outputs/model.pkl --run-id $BESTRUNID \
-                    -d "AutoML model using diabetes dataset" \
-                    --model-framework ScikitLearn -t $ROOTFOLDER/model.json \
-                    --tag data=diabetes \
-                    --tag model=automl \
-                    --tag type=classifier \
-                    --tag build=$BUILDNUMBER
-            env:
-              RG: $(RGName)
-              WORKSPACE: $(WorkspaceName)
-              BESTRUNID: $(bestRunId)
-              MODELNAME: $(ModelName)
-              EXPERIMENT: $(ExperimentName)
-              BUILDNUMBER: $(Build.BuildNumber)
-              ROOTFOLDER: $(Build.SourcesDirectory)/automl
-
-          - task: CopyFiles@2
-            displayName: Copy model files to staging directory
-            inputs:
-              targetFolder: $(Build.ArtifactStagingDirectory)
-              contents: $(Build.SourcesDirectory)/automl/model.*
-              flattenFolders: true
-          
-          - task: PublishPipelineArtifact@1
-            displayName: Publish Artifact
-            inputs:
-              targetPath: $(Build.ArtifactStagingDirectory)
-              ArtifactName: model
+      - task: CopyFiles@2
+        displayName: Copy model files to staging directory
+        inputs:
+          targetFolder: $(Build.ArtifactStagingDirectory)
+          contents: $(Build.SourcesDirectory)/automl/model.*
+          flattenFolders: true
 
 - stage: devDeployAutoMLModel
   dependsOn: automl
   displayName: Deploy AutoML Model to DEV
   jobs:
-  - deployment: deployAutoMLModel
-    displayName: Deploy AutoML Model
-    pool:
-      vmImage: ubuntu-latest
-    container: mlops
-    environment:
-      Workspace
-    strategy:
-      runOnce:
-        deploy:
-          steps:
-          - download: current
-            artifact: model  # get model
-
-          - checkout: self   # get config files in repo
-
-          - task: AzureCLI@2
-            displayName: Deploy Model to ACI
-            inputs:
-              azureSubscription: $(AzureSubscription)
-              scriptType: bash
-              scriptLocation: inlineScript
-              inlineScript: |
-                echo "Deploying model to service $SERVICENAME"
-                az ml model deploy -g $RG -w $WORKSPACE -n $SERVICENAME -f $ARTIFACTFOLDER/metadata/model.json \
-                  --dc aciDeploymentConfig.yml --ic inferenceConfig.yml --overwrite
-                
-                serviceUri=$(az ml service show -g $RG -w $WORKSPACE  -n $SERVICENAME --query scoringUri -o tsv)
-                swaggerUri=${serviceUri/\/score/\/swagger.json}
-
-                # get the key for the api: TODO - only in prod
-                #serviceKey=$(az ml service get-keys -n $SERVICENAME -g $RG -w $WORKSPACE --query primaryKey -o tsv)
-                
-                echo "ACI Service Uri is $serviceUri"
-                echo "ACI Service Swagger Uri is $swaggerUri"
-
-                # create variables to store the Uri's
-                echo "##vso[task.setvariable variable=ServiceUri;]$serviceUri"
-                echo "##vso[task.setvariable variable=SwaggerUri;]$swaggerUri"
-                #echo "##vso[task.setvariable variable=ServiceKey;]$serviceKey"
-              workingDirectory: deployment
-            env:
-              ARTIFACTFOLDER: $(Pipeline.Workspace)/model
-              RG: $(RGName)
-              LOCATION: $(Location)
-              WORKSPACE: $(WorkspaceName)
-              SERVICENAME: $(ServiceName)
-          
-          - script: |
-              pytest test_api.py --doctest-modules --junitxml=results/test-results.xml --cov=test_api --cov-report=xml:results/cov/coverage.xml --score_url $(ServiceUri)
-            workingDirectory: tests
-            displayName: Smoke test the API
-            continueOnError: true
-
-          - task: PublishTestResults@2
-            displayName: Publish test results
-            inputs:
-              testResultsFormat: JUnit
-              testResultsFiles: '$(System.DefaultWorkingDirectory)/tests/results/test-results.xml'
-              failTaskOnFailedTests: true
-          
-          - task: PublishCodeCoverageResults@1
-            displayName: Publish coverage results
-            inputs:
-              codeCoverageTool: Cobertura
-              summaryFileLocation: '$(System.DefaultWorkingDirectory)/tests/results/cov/coverage.xml'
-              failIfCoverageEmpty: true
+  - template: templates/job-deploy-model.yml
+    parameters:
+      AzureSubscription: $(AzureSubscription)
+      Environment: MLOps-Dev
+      EnvironmentName: DEV
+      JobContainer: mlops
+      RGName: $(RGName)
+      Location: $(Location)
+      WorkspaceName: $(WorkspaceName)
+      ServiceName: 'diabetesautoml-aci'
