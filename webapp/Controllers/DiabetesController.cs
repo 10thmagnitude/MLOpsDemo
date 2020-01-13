@@ -44,11 +44,11 @@ namespace webapp.Controllers
         [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
         public async Task<IActionResult> Predict(DiabetesViewModel model)
         {
-            var result = await _predictionAPI.GetPrediction(model);
+            var lowRisk = await _predictionAPI.GetPrediction(model);
             TempData["_statusMessage"] = new StatusMessageViewModel() 
             { 
-                Message = $"This patient has a {(result ? "high" : "low")} chance of developing diabetes.",
-                Type = result ? StatusType.danger : StatusType.success,
+                Message = $"This patient has a {(lowRisk ? "low" : "high")} chance of developing diabetes.",
+                Type = lowRisk ? StatusType.success : StatusType.danger,
                 Title = "Result"
             };
 
