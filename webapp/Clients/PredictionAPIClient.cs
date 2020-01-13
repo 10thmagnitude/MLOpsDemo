@@ -30,7 +30,7 @@ public class PredictionAPIClient : IPredictionAPIClient
             data = new[] { model }
         };
 
-        var result = await Client.PostAsync("/score", 
+        var result = await Client.PostAsync("", 
             new StringContent(JsonSerializer.Serialize(json), Encoding.UTF8, "application/json"));
         
         if (result.IsSuccessStatusCode)
